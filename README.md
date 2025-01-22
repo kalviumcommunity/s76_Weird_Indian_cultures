@@ -2,7 +2,7 @@
 
 
 
-Welcome to the **"List of weird Indian cultures"**. This is a hands-on project where we will build a complete web application using the MERN stack (MongoDB, Express.js, React.js, and Node.js). The goal is to learn how to develop a full-stack web application and create a bestter application.
+Welcome to the **"List of weird Indian cultures"**. This is a hands-on project where we will build a complete web application using the MERN stack (MongoDB, Express.js, React.js, and Node.js). The goal is to learn how to develop a full-stack web application and create a better application.
 
 ## Features
 
