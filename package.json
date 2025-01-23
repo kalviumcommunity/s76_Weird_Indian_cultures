@@ -1,7 +1,7 @@
 {
   "name": "s76_weird_indian_cultures",
   "version": "1.0.0",
-  "description": "",
+  "description": "A project exploring the diverse and weird cultural practices in India.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -11,7 +11,7 @@
     "url": "git+https://github.com/kalviumcommunity/s76_Weird_Indian_cultures.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "Harish B <imharishba@gmail.com>",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/kalviumcommunity/s76_Weird_Indian_cultures/issues"
