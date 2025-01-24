@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/kalviumcommunity/s76_Weird_Indian_cultures/issues"
   },
-  "homepage": "https://github.com/kalviumcommunity/s76_Weird_Indian_cultures#readme"
+  "homepage": "https://github.com/kalviumcommunity/s76_Weird_Indian_cultures#readme",
+  "dependencies": {
+    "express": "^4.21.2"
+  }
 }
