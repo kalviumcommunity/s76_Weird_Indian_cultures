@@ -45,3 +45,10 @@ Combining cultural exploration with full-stack development, this platform showca
 -Multimedia elements like images and videos.
 
 -This project enhances technical skills while creating a valuable cultural resource. Happy coding!
+
+
+
+## Deployed Link
+
+https://s76-weird-indian-cultures.onrender.com
+
