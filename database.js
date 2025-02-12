@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-
+require('dotenv').config()
 const connectDatabase = () => {
   mongoose
     .connect(process.env.DB_URL)
@@ -14,4 +14,8 @@ const connectDatabase = () => {
     });
 };
 
-module.exports = connectDatabase;
+const getConnection = () =>{
+  return mongoose.connection.readyState===1 ? 'connected':'disconnected';
+}
+
+module.exports = {connectDatabase,getConnection};
