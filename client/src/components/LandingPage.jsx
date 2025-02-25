@@ -40,9 +40,9 @@ const LandingPage = () => {
           <motion.img
             src={ChackraImg}
             alt="Spinning Image"
-            className="w-[400px] h-[363px] absolute ml-[150px] mt-[120px]" // Adjust size as needed
+            className="w-[400px] h-[363px] absolute ml-[150px] mt-[120px]" 
             animate={{ rotate: 360 }} // Rotate to 360 degrees
-            transition={{ duration: 4, repeat: Infinity, ease: "linear" }} // Infinite loop
+            transition={{ duration: 3, repeat: Infinity, ease: "linear" }} // Infinite loop
           />
                  
             
