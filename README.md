@@ -52,3 +52,7 @@ Combining cultural exploration with full-stack development, this platform showca
 
 https://s76-weird-indian-cultures.onrender.com
 
+
+## Frontend deployed link
+
+https://asapindian.pages.dev/
