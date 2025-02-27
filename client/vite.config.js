@@ -8,9 +8,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
-  build: {
-    outDir: 'dist', // Ensure the output directory is set to 'dist'
-  },
+
   server: {
     watch: {
       usePolling: true,
