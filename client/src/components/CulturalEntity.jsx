@@ -1,34 +1,25 @@
-import Taj from '/karoly-buzas-QS7e8OrubI0-unsplash (1).jpg'
+// import PropTypes from 'prop-types';
 
-const CulturalEntity = () => {
-  
-  const culturalEntityData = {
-    name: 'Taj Mahal',
-    description:
-      'The Taj Mahal, located in Agra, is a stunning white marble mausoleum and one of the Seven Wonders of the World. It was built by Emperor Shah Jahan in memory of his wife Mumtaz Mahal.',
-   
-  };
-
-
-
-
+function CulturalEntity  ({CultureName,CultureDescription,Region,Significance}) {
   return (
-    <div className="bg-white shadow-neutral-950 shadow-lg m-[40px] mt-[100px] rounded-lg h-[620px] w-[450px] flex flex-col items-center hover:scale-x-100">
-      <h2 className="text-2xl font-semibold text-center text-gray-800">{culturalEntityData.name}</h2>
-      <img
-        src={Taj}
-        alt={culturalEntityData.name}
-        className="h-[400px] w-auto rounded-lg my-4"
-      />
-      <p className="text-gray-600 text-sm h-[90px] w-[350px]">{culturalEntityData.description}</p>
-      <button
-        className="  border-1   border-orange-500 text-orange-500 h-[40px] w-[170px] mb-[20px] mt-[10px] rounded-md hover:bg-orange-500 hover:text-white transition"
-        
-      >
+    <div>
+      <div className="bg-white shadow-neutral-950 shadow-lg m-[40px] mt-[100px] rounded-lg h-[320px] w-[370px] flex flex-col pl-[30px] pt-[10px]  hover:scale-x-100">
+      <h2 className="text-2xl font-semibold text-center text-gray-800">{CultureName}</h2>
+
+    
+
+      <p className="text-gray-600 text-sm mt-[10px]">{CultureDescription}</p>
+      <p className="mt-[10px]"><strong>Region:</strong> {Region}</p>
+      <p className="mt-[10px]"><strong>Significance:</strong> {Significance}</p>
+      
+
+      <button className="border-1 border-orange-500 text-orange-500 h-[40px] w-[170px] mt-[250px] ml-[10px] absolute rounded-md hover:bg-orange-500 hover:text-white transition ">
         Learn More
       </button>
     </div>
+    </div>
   );
 };
+
 
 export default CulturalEntity;
