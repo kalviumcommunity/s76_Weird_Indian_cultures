@@ -38,9 +38,10 @@ function Home () {
 
         {/* Navbar */}
         <Navbar />
-
+         
         {/* Main Content */}
         <div className="relative flex flex-col items-center justify-center  p-4">
+          
           {loading ? (
             <p className="text-white">Loading...</p>
           ) : (
