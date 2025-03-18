@@ -16,10 +16,6 @@ const Itemschema = new mongoose.Schema({
   Significance: {
     type: String,
     required: true,
-  },
-  WeirdnessLevel: {  
-    type: Number,
-    required: true,
   }
 });
 
