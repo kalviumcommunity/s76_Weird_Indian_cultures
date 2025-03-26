@@ -36,6 +36,32 @@ const fetch = async (req, res) => {
   }
 };
 
+// 🔹 Fetch a single item by ID
+const getItem = async (req, res) => {
+  try {
+    const {id} = req.params.id;
+    console.log("Fetching item with ID:", id);
+
+    if (!id) {
+      console.log("No ID provided");
+      return res.status(400).json({ message: "ID is required" });
+    }
+
+    const item = await Itemschema.findById(id);
+    if (!item) {
+      console.log("Item not found for ID:", id);
+      return res.status(404).json({ message: "Item not found." });
+    }
+
+    res.json(item);
+  } catch (error) {
+    console.error("Error fetching item:", error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+
+
 // 🔹 Update an item
 const update = async (req, res) => {
   try {
@@ -76,4 +102,4 @@ const Delete = async (req, res) => {
   }
 };
 
-module.exports = { create, fetch, update, Delete };
+module.exports = { create, fetch, update, Delete ,getItem};
