@@ -1,6 +1,8 @@
 import PropTypes from 'prop-types';
-
-function CulturalEntity  ({CultureName,CultureDescription,Region,Significance}) {
+import { useNavigate } from 'react-router-dom';
+// import { MdDelete } from "react-icons/md";
+function CulturalEntity  ({CultureName,CultureDescription,Region,Significance,_id,onDelete}) {
+  const navigate=useNavigate()
   return (
     <div className="">
       
@@ -13,6 +15,24 @@ function CulturalEntity  ({CultureName,CultureDescription,Region,Significance}) 
       <p className="mt-[10px]"><strong>Region:</strong> {Region}</p>
       <p className="mt-[10px]"><strong>Significance:</strong> {Significance}</p>
       
+     <div className='flex mt-[240px] absolute'>
+
+     <button
+          className="bg-gray-700 ml-[20px] text-white h-[30px] w-[90px] rounded hover:bg-gray-800 transition mt-[10px]"
+          onClick={() => navigate(`/form/${_id}`)} 
+        >
+          Edit
+        </button>
+
+        <button
+         
+          onClick={() => onDelete(_id)}
+               className='ml-[10px]  bg-black  text-white h-[30px] w-[90px] rounded hover:bg-gray-800 transition mt-[10px]'   
+        >
+            delete
+         
+        </button>
+     </div>
 
       {/* <button className="border-1 border-orange-500 text-orange-500 h-[40px] w-[170px] mt-[250px] ml-[10px] absolute rounded-md hover:bg-orange-500 hover:text-white transition ">
         Learn More
@@ -27,6 +47,8 @@ CulturalEntity.propTypes = {
   CultureDescription: PropTypes.string.isRequired,
   Region: PropTypes.string.isRequired,
   Significance: PropTypes.string.isRequired,
+  _id: PropTypes.string.isRequired, // Added _id validation
+  onDelete: PropTypes.func.isRequired, // Added function validation
 };
 
 

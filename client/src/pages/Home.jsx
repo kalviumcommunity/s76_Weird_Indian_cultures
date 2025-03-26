@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar.jsx";
-// import Footer from "../components/Footer.jsx";
 import IndBg from "/indianbg.jpg";
 import CulturalEntity from "../components/CulturalEntity.jsx";
 
@@ -26,6 +25,16 @@ function Home () {
     fetchData();
   }, []);
 
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`http://localhost:5000/api/item/delete/${id}`);
+      setCultures(cultures.filter((culture) => culture._id !== id));
+      alert("Entry deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting entry:", error);
+    }
+  };
+
   return (
     <>
       {/* Background Section */}
@@ -47,7 +56,7 @@ function Home () {
           ) : (
             <div className="grid grid-cols-1  xl:grid-cols-4 gap-6">
               {cultures.map((culture) => (
-                <CulturalEntity key={culture.id} {...culture} />
+                <CulturalEntity key={culture.id} {...culture} onDelete={handleDelete} />
               ))}
             </div>
           )}
