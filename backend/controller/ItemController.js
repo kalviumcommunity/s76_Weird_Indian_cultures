@@ -1,23 +1,31 @@
-const Itemschema = require('../model/schema.js');
+const Joi = require("joi");
+const Itemschema = require("../model/schema.js");
 
-// 🔹 Create a new item
+// ✅ Joi Schema for Validation
+const itemValidationSchema = Joi.object({
+  CultureName: Joi.string().min(3).max(100).required(),
+  CultureDescription: Joi.string().min(10).max(500).required(),
+  Region: Joi.string().min(3).max(100).required(),
+  Significance: Joi.string().min(10).max(500).required(),
+});
+
+// 🔹 Create a new item with Joi validation
 const create = async (req, res) => {
   try {
-    const { CultureName, CultureDescription, Region, Significance } = req.body;
-
-    // Validate required fields
-    if (!CultureName || !CultureDescription || !Region || !Significance) {
-      return res.status(400).json({ message: "All fields are required" });
+    // Validate request body
+    const { error } = itemValidationSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
     }
 
-    // Create and save the item
-    const item = new Itemschema({ CultureName, CultureDescription, Region, Significance });
+    // Save item in DB
+    const item = new Itemschema(req.body);
     await item.save();
 
     res.status(201).json({ message: "Item created successfully!", item });
   } catch (error) {
     console.error("Error creating item:", error);
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -28,7 +36,6 @@ const fetch = async (req, res) => {
     if (items.length === 0) {
       return res.status(404).json({ message: "No items found." });
     }
-
     res.json(items);
   } catch (error) {
     console.error("Error fetching items:", error);
@@ -36,20 +43,18 @@ const fetch = async (req, res) => {
   }
 };
 
-// 🔹 Fetch a single item by ID
+// 🔹 Fetch a single item by ID with Joi validation
 const getItem = async (req, res) => {
   try {
-    const {id} = req.params.id;
-    console.log("Fetching item with ID:", id);
+    const { id } = req.params;
 
-    if (!id) {
-      console.log("No ID provided");
-      return res.status(400).json({ message: "ID is required" });
+    // Validate ID
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid ID format" });
     }
 
     const item = await Itemschema.findById(id);
     if (!item) {
-      console.log("Item not found for ID:", id);
       return res.status(404).json({ message: "Item not found." });
     }
 
@@ -60,21 +65,26 @@ const getItem = async (req, res) => {
   }
 };
 
-
-
-// 🔹 Update an item
+// 🔹 Update an item with Joi validation
 const update = async (req, res) => {
   try {
-    const id = req.params.id;
+    const { id } = req.params;
 
-    // Check if the item exists
-    const item = await Itemschema.findById(id);
-    if (!item) {
-      return res.status(404).json({ message: "Item not found." });
+    // Validate ID
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid ID format" });
     }
 
-    // Update the item
+    // Validate request body
+    const { error } = itemValidationSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+
     const updatedItem = await Itemschema.findByIdAndUpdate(id, req.body, { new: true });
+    if (!updatedItem) {
+      return res.status(404).json({ message: "Item not found." });
+    }
 
     res.json({ message: "Item updated successfully!", updatedItem });
   } catch (error) {
@@ -83,14 +93,17 @@ const update = async (req, res) => {
   }
 };
 
-// 🔹 Delete an item
+// 🔹 Delete an item with Joi validation
 const Delete = async (req, res) => {
   try {
-    const id = req.params.id;
+    const { id } = req.params;
 
-    // Delete the item
+    // Validate ID
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid ID format" });
+    }
+
     const item = await Itemschema.findByIdAndDelete(id);
-
     if (!item) {
       return res.status(404).json({ message: "Item not found." });
     }
@@ -102,4 +115,4 @@ const Delete = async (req, res) => {
   }
 };
 
-module.exports = { create, fetch, update, Delete ,getItem};
+module.exports = { create, fetch, update, Delete, getItem };
