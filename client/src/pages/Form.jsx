@@ -3,15 +3,18 @@ import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 
 function Form() {
+  const userId = localStorage.getItem("userId");
   const { id } = useParams(); // Retrieve id from the URL
   const navigate = useNavigate();
   const isEdit = Boolean(id);
+
   const [formData, setFormData] = useState({
     CultureName: "",
     CultureDescription: "",
     Region: "",
     Significance: "",
   });
+
   const [message, setMessage] = useState("");
 
   // Fetch existing data when editing
@@ -20,9 +23,7 @@ function Form() {
       axios
         .get(`http://localhost:5000/api/item/fetch/${id}`)
         .then((response) => {
-          console.log("Fetched data:", response.data);
-          // If your API wraps the data in an object (e.g., { item: { ... } })
-          const data = response.data.item || response.data;
+          const data = response.data || response.data.item;
           setFormData({
             CultureName: data.CultureName || "",
             CultureDescription: data.CultureDescription || "",
@@ -30,7 +31,10 @@ function Form() {
             Significance: data.Significance || "",
           });
         })
-        .catch((error) => console.error("Error fetching data:", error));
+        .catch((error) => {
+          console.error("Error fetching data:", error);
+          setMessage("Error fetching data.");
+        });
     }
   }, [id]);
 
@@ -40,20 +44,30 @@ function Form() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.CultureName || !formData.CultureDescription || !formData.Region || !formData.Significance) {
+      setMessage("Please fill all fields.");
+      return;
+    }
+
     try {
       if (isEdit) {
         // Update existing entry
         await axios.put(`http://localhost:5000/api/item/update/${id}`, formData);
         setMessage("Data updated successfully!");
       } else {
-        // Create new entry
-        await axios.post("http://localhost:5000/api/item/create", formData);
+        // Add userId only when creating
+        const dataToSend = {
+          ...formData,
+          created_by: userId,
+        };
+        await axios.post("http://localhost:5000/api/item/create", dataToSend);
         setMessage("Data submitted successfully!");
       }
       navigate("/home"); // Redirect after submission
     } catch (error) {
+      console.error("Error submitting data:", error.response?.data || error.message);
       setMessage("Error submitting data");
-      console.error("Error:", error);
     }
   };
 

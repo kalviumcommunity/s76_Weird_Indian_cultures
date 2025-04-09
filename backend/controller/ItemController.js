@@ -1,5 +1,6 @@
 const Joi = require("joi");
 const Itemschema = require("../model/schema.js");
+const userSchema=require("../model/User")
 
 // ✅ Joi Schema for Validation
 const itemValidationSchema = Joi.object({
@@ -7,6 +8,8 @@ const itemValidationSchema = Joi.object({
   CultureDescription: Joi.string().min(10).max(500).required(),
   Region: Joi.string().min(3).max(100).required(),
   Significance: Joi.string().min(10).max(500).required(),
+  created_by: Joi.string().required(),
+
 });
 
 // 🔹 Create a new item with Joi validation
@@ -115,4 +118,24 @@ const Delete = async (req, res) => {
   }
 };
 
-module.exports = { create, fetch, update, Delete, getItem };
+
+const users= async (req, res) => {
+  try {
+    const users = await userSchema.find();
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const usercreatedby = async (req, res) => {
+  try {
+    const items = await Itemschema.find({ created_by: req.params.userId }).populate("created_by");
+    res.json(items); 
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+module.exports = { create, fetch, update, Delete, getItem , users,usercreatedby };

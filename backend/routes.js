@@ -1,6 +1,7 @@
 const express = require('express');
 const route = express.Router();
-const { create, fetch, update, Delete, getItem } = require('./controller/ItemController');
+const { create, fetch, update, Delete, getItem , users,usercreatedby, } = require('./controller/ItemController');
+const { login,signup} = require('./controller/Auth');
 
 
 route.get('/fetch', fetch);
@@ -13,5 +14,13 @@ route.delete('/delete/:id', Delete);
 
 
 route.get('/fetch/:id', getItem);
+
+route.get('/usercreatedby/:userId',usercreatedby);
+route.get('/users',users);
+
+route.post("/signup", signup);
+route.post("/login", login);
+
+
 
 module.exports = route;
