@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const Itemschema = new mongoose.Schema({
   CultureName: {
     type: String,
-    required: true,  
+    required: true,
   },
   CultureDescription: {
     type: String,
@@ -15,6 +15,11 @@ const Itemschema = new mongoose.Schema({
   },
   Significance: {
     type: String,
+    required: true,
+  },
+  created_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User", 
     required: true,
   }
 });
