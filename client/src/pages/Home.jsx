@@ -20,7 +20,7 @@ function Home () {
       } catch (error) {
         console.error("Error fetching users", error);
       }
-    }
+    };
 
     const fetchData = async () => {
       try {
@@ -70,7 +70,8 @@ function Home () {
   const handleDelete = async (id) => {
     try {
       await axios.delete(`http://localhost:5000/api/item/delete/${id}`);
-      setCultures(cultures.filter((culture) => culture._id !== id));
+      // Immediately update the state by filtering out the deleted item
+      setCultures(prevCultures => prevCultures.filter((culture) => culture.id !== id));
       alert("Entry deleted successfully!");
     } catch (error) {
       console.error("Error deleting entry:", error);
@@ -90,13 +91,13 @@ function Home () {
         </div>
 
         <select
-          className="p-2 bg-violet-600 text-white rounded-md shadow-md focus:ring-2 focus:ring-violet-400  absolute z-100"
+          className="p-2 bg-violet-600 text-white rounded-md shadow-md focus:ring-2  focus:ring-violet-400  absolute z-100"
           onChange={handleUserChange}
           value={selectedUser}
         >
           <option value="">Select User</option>
           {users.map((user) => (
-            <option key={user._id} value={user._id}>
+            <option key={user.id} value={user.id}>
               {user.username}
             </option>
           ))}
@@ -109,7 +110,7 @@ function Home () {
             <div className="grid grid-cols-1  xl:grid-cols-4 gap-6">
               {Array.isArray(cultures) && cultures.length > 0 ? (
                 cultures.map((culture) => (
-                  <CulturalEntity key={culture._id} {...culture} onDelete={handleDelete} />
+                  <CulturalEntity key={culture.id} {...culture} onDelete={handleDelete} />
                 ))
               ) : (
                 <p className="text-white">No cultural data found.</p>

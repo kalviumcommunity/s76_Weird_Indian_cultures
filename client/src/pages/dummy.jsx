@@ -1,257 +1,120 @@
-import { useState, useEffect } from "react";
-import { AiOutlinePlusCircle } from "react-icons/ai";
-import axios from "axios";
-import { useParams, useNavigate } from "react-router-dom";
-import Nav from "../components/navbar";
+// import { useEffect, useState } from "react";
+// import axios from "axios";
+// import Navbar from "../components/Navbar.jsx";
+// import IndBg from "/indianbg.jpg";
+// import CulturalEntity from "../components/CulturalEntity.jsx";
 
-const CreateProduct = () => {
-    const { id } = useParams();
-    const navigate = useNavigate();
-    const isEdit = Boolean(id);
+// function Home() {
+//   const [cultures, setCultures] = useState([]);
+//   const [users, setUsers] = useState([]);
+//   const [selectedUser, setSelectedUser] = useState("");
+//   const [loading, setLoading] = useState(true);
 
-    const [images, setImages] = useState([]);
-    const [previewImages, setPreviewImages] = useState([]);
-    const [name, setName] = useState("");
-    const [description, setDescription] = useState("");
-    const [category, setCategory] = useState("");
-    const [tags, setTags] = useState("");
-    const [price, setPrice] = useState("");
-    const [stock, setStock] = useState("");
-    const [email, setEmail] = useState("");
+//   const API_URL = "http://localhost:5000/api/item/fetch";
 
-    const categoriesData = [
-        { title: "Electronics" },
-        { title: "Fashion" },
-        { title: "Books" },
-        { title: "Home Appliances" },
-    ];
+//   useEffect(() => {
+//     const fetchUsers = async () => {
+//       try {
+//         const response = await axios.get("http://localhost:5000/api/item/users");
+//         setUsers(response.data || []);
+//       } catch (error) {
+//         console.error("Error fetching users", error);
+//       }
+//     };
 
-    useEffect(() => {
-        if (isEdit) {
-            axios
-                .get(`http://localhost:8000/api/v2/product/product/${id}`)
-                .then((response) => {
-                    const p = response.data.product;
-                    setName(p.name);
-                    setDescription(p.description);
-                    setCategory(p.category);
-                    setTags(p.tags || "");
-                    setPrice(p.price);
-                    setStock(p.stock);
-                    setEmail(p.email);
-                    if (p.images && p.images.length > 0) {
-                        setPreviewImages(
-                            p.images.map((imgPath) => `http://localhost:8000${imgPath}`)
-                        );
-                    }
-                })
-                .catch((err) => {
-                    console.error("Error fetching product:", err);
-                });
-        }
-    }, [id, isEdit]);
+//     const fetchData = async () => {
+//       try {
+//         const response = await axios.get(API_URL);
+//         setCultures(Array.isArray(response.data) ? response.data : []);
+//       } catch (error) {
+//         console.error("Error fetching data:", error);
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
 
-    const handleImagesChange = (e) => {
-        const files = Array.from(e.target.files);
-        setImages((prevImages) => prevImages.concat(files));
-        const imagePreviews = files.map((file) => URL.createObjectURL(file));
-        setPreviewImages((prevPreviews) => prevPreviews.concat(imagePreviews));
-    };
+//     fetchData();
+//     fetchUsers();
+//   }, []);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const formData = new FormData();
-        formData.append("name", name);
-        formData.append("description", description);
-        formData.append("category", category);
-        formData.append("tags", tags);
-        formData.append("price", price);
-        formData.append("stock", stock);
-        formData.append("email", email);
+//   const handleUserChange = async (e) => {
+//     const userId = e.target.value;
+//     localStorage.setItem("userId", userId);
+//     setSelectedUser(userId);
+//     setLoading(true);
 
-        images.forEach((image) => {
-            formData.append("images", image);
-        });
+//     if (userId === "") {
+//       try {
+//         const res = await fetch("http://localhost:5000/api/item/fetch");
+//         const data = await res.json();
+//         setCultures(Array.isArray(data) ? data : []);
+//       } catch (error) {
+//         console.error("Error fetching all items:", error);
+//       } finally {
+//         setLoading(false);
+//       }
+//       return;
+//     }
 
-        try {
-            if (isEdit) {
-                const response = await axios.put(
-                    `http://localhost:8000/api/v2/product/update-product/${id}`,
-                    formData,
-                    {
-                        headers: { "Content-Type": "multipart/form-data" },
-                    }
-                );
-                if (response.status === 200) {
-                    alert("Product updated successfully!");
-                    navigate("/my-products");
-                }
-            } else {
-                const response = await axios.post(
-                    "http://localhost:8000/api/v2/product/create-product",
-                    formData,
-                    {
-                        headers: { "Content-Type": "multipart/form-data" },
-                    }
-                );
-                if (response.status === 201) {
-                    alert("Product created successfully!");
-                    setImages([]);
-                    setPreviewImages([]);
-                    setName("");
-                    setDescription("");
-                    setCategory("");
-                    setTags("");
-                    setPrice("");
-                    setStock("");
-                    setEmail("");
-                }
-            }
-        } catch (err) {
-            console.error("Error creating/updating product:", err);
-            alert("Failed to save product. Please check the data and try again.");
-        }
-    };
+//     try {
+//       const res = await fetch(`http://localhost:5000/api/item/usercreatedby/${userId}`);
+//       const data = await res.json();
+//       setCultures(Array.isArray(data) ? data : []);
+//     } catch (err) {
+//       console.error("Error fetching filtered combos:", err);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
 
-    return (
-        <>
-        <Nav/>
-        <div className="w-[90%] max-w-[500px] bg-white shadow h-auto rounded-[4px] p-4 mx-auto">
-            <h5 className="text-[24px] font-semibold text-center">
-                {isEdit ? "Edit Product" : "Create Product"}
-            </h5>
-            <form onSubmit={handleSubmit}>
-                <div className="mt-4">
-                    <label className="pb-1 block">
-                        Email <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                        type="email"
-                        value={email}
-                        className="w-full p-2 border rounded"
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Enter your email"
-                        required
-                    />
-                </div>
-                <div>
-                    <label className="pb-1 block">
-                        Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                        type="text"
-                        value={name}
-                        className="w-full p-2 border rounded"
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Enter product name"
-                        required
-                    />
-                </div>
-                <div className="mt-4">
-                    <label className="pb-1 block">
-                        Description <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                        value={description}
-                        className="w-full p-2 border rounded"
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Enter product description"
-                        rows="4"
-                        required
-                    ></textarea>
-                </div>
-                <div className="mt-4">
-                    <label className="pb-1 block">
-                        Category <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                        className="w-full p-2 border rounded"
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        required
-                    >
-                        <option value="">Choose a category</option>
-                        {categoriesData.map((i) => (
-                            <option value={i.title} key={i.title}>
-                                {i.title}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div className="mt-4">
-                    <label className="pb-1 block">Tags</label>
-                    <input
-                        type="text"
-                        value={tags}
-                        className="w-full p-2 border rounded"
-                        onChange={(e) => setTags(e.target.value)}
-                        placeholder="Enter product tags"
-                    />
-                </div>
-                <div className="mt-4">
-                    <label className="pb-1 block">
-                        Price <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                        type="number"
-                        value={price}
-                        className="w-full p-2 border rounded"
-                        onChange={(e) => setPrice(e.target.value)}
-                        placeholder="Enter product price"
-                        required
-                    />
-                </div>
-                <div className="mt-4">
-                    <label className="pb-1 block">
-                        Stock <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                        type="number"
-                        value={stock}
-                        className="w-full p-2 border rounded"
-                        onChange={(e) => setStock(e.target.value)}
-                        placeholder="Enter stock quantity"
-                        required
-                    />
-                </div>
-                <div className="mt-4">
-                    <label className="pb-1 block">
-                        {isEdit ? "Upload New Images (optional)" : "Upload Images"}{" "}
-                        <span className={isEdit ? "" : "text-red-500"}>*</span>
-                    </label>
-                    <input
-                        name="image"
-                        type="file"
-                        id="upload"
-                        className="hidden"
-                        multiple
-                        onChange={handleImagesChange}
-                        required={!isEdit} 
-                    />
-                    <label htmlFor="upload" className="cursor-pointer">
-                        <AiOutlinePlusCircle size={30} color="#555" />
-                    </label>
-                    <div className="flex flex-wrap mt-2">
-                        {previewImages.map((img, index) => (
-                            <img
-                                src={img}
-                                key={index}
-                                alt="Preview"
-                                className="w-[100px] h-[100px] object-cover m-2"
-                            />
-                        ))}
-                    </div>
-                </div>
-                <button
-                    type="submit"
-                    className="w-full mt-4 bg-blue-500 text-white p-2 rounded"
-                >
-                    {isEdit ? "Save Changes" : "Create"}
-                </button>
-            </form>
-        </div>
-        </>
-    );
-};
+//   const handleDelete = async (id) => {
+//     try {
+//       await axios.delete(`http://localhost:5000/api/item/delete/${id}`);
+//       setCultures(cultures.filter((culture) => culture.id !== id)); // <-- use `id`
+//       alert("Entry deleted successfully!");
+//     } catch (error) {
+//       console.error("Error deleting entry:", error);
+//     }
+//   };
 
-export default CreateProduct;
+//   return (
+//     <div className="relative bg-cover bg-fixed" style={{ backgroundImage: `url(${IndBg})` }}>
+//       <div className="absolute inset-0" style={{ backgroundColor: "rgba(0, 0, 0, 0.6)" }}></div>
+
+//       <div className="-z-10">
+//         <Navbar />
+//       </div>
+
+//       <select
+//         className="p-2 bg-violet-600 text-white rounded-md shadow-md focus:ring-2 focus:ring-violet-400 absolute z-100"
+//         onChange={handleUserChange}
+//         value={selectedUser}
+//       >
+//         <option value="">Select User</option>
+//         {users.map((user) => (
+//           <option key={user.id} value={user.id}> {/* <-- use `id` instead of `_id` */}
+//             {user.username}
+//           </option>
+//         ))}
+//       </select>
+
+//       <div className="relative flex flex-col items-center justify-center p-4">
+//         {loading ? (
+//           <p className="text-white">Loading...</p>
+//         ) : (
+//           <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+//             {Array.isArray(cultures) && cultures.length > 0 ? (
+//               cultures.map((culture) => (
+//                 <CulturalEntity key={culture.id} {...culture} onDelete={handleDelete} />
+//               ))
+//             ) : (
+//               <p className="text-white">No cultural data found.</p>
+//             )}
+//           </div>
+//         )}
+//       </div>
+//     </div>
+//   );
+// }
+
+// export default Home;

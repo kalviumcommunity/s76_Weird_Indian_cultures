@@ -1,28 +1,33 @@
-require('dotenv').config(); 
-
-const express = require('express');
+require("dotenv").config();
+const express = require("express");
 const app = express();
-const port = process.env.PORT ;
-// const dotenv =require("dotenv");
-const {connectDatabase, getConnection} = require('./database');
-const cors = require('cors');
+const port = process.env.PORT;
+const pool = require("./database"); // This is your MySQL connection pool
+
+const cors = require("cors");
 app.use(cors());
-
-
 app.use(express.json());
 
-app.use('/api/item', require('./routes'));    
-app.get('/ping', (req, res) => {
-    res.send('Pong!');
+// Routes
+app.use("/api/item", require("./routes"));
+
+// Ping route
+app.get("/ping", (req, res) => {
+  res.send("Pong!");
 });
 
-connectDatabase();
+// Health check route to verify DB connection
+app.get("/", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT 1");
+    res.send("Database connection is working!");
+  } catch (error) {
+    console.error("DB check error:", error.message);
+    res.status(500).send("Database connection failed");
+  }
+});
 
-app.get('/',(req,res)=>{
-    console.log('connected')
-    res.send(getConnection());
-})
-
+// Start server
 app.listen(port, () => {
-    console.log(`Server is running at http://localhost:${port}`);
+  console.log(`✅ Server is running at http://localhost:${port}`);
 });

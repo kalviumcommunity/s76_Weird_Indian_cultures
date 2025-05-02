@@ -1,21 +1,14 @@
-const mongoose = require("mongoose");
-require('dotenv').config()
-const connectDatabase = () => {
-  mongoose
-    .connect(process.env.DB_URL)
-    .then((data) => {
-      console.log(
-        `MongoDB connected with server: ${data.connection.host}`
-      );
-    })
-    .catch((err) => {
-      console.error(`Database connection failed: ${err.message}`);
-      process.exit(1); // Exit process to avoid running with an invalid DB connection
-    });
-};
+const mysql = require("mysql2/promise");
+require("dotenv").config();
 
-const getConnection = () =>{
-  return mongoose.connection.readyState===1 ? 'connected':'disconnected';
-}
+const pool = mysql.createPool({
+  host: process.env.MYSQL_HOST,
+  user: process.env.MYSQL_USER,
+  password: process.env.MYSQL_PASSWORD,
+  database: process.env.MYSQL_DATABASE,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
 
-module.exports = {connectDatabase,getConnection};
+module.exports = pool;
