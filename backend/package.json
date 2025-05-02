@@ -18,12 +18,14 @@
   },
   "homepage": "https://github.com/kalviumcommunity/s76_Weird_Indian_cultures#readme",
   "dependencies": {
+    "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "joi": "^17.13.3",
     "mongoose": "^8.10.0",
+    "mysql2": "^3.14.0",
     "node": "^18.20.6"
   }
 }
