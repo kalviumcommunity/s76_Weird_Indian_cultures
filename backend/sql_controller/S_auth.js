@@ -1,7 +1,9 @@
 const bcrypt = require("bcrypt");
-const pool = require("../database");
-
+const pool = require("../db");
+const jwt = require("jsonwebtoken");
 // 🔹 Signup Route
+const JWT_SECRET = process.env.JWT_SECRET;
+const TOKEN_EXPIRES_IN = process.env.TOKEN_EXPIRES_IN || "7d";
 const signup = async (req, res) => {
   const { username, email, password } = req.body;
 
@@ -49,15 +51,24 @@ const login = async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid email or password" });
     }
+     const tokenPayload = {
+       id: user.id,
+       username: user.username,
+       email: user.email,
+     };
+     const token = jwt.sign(tokenPayload, JWT_SECRET, {
+       expiresIn: TOKEN_EXPIRES_IN,
+     });
 
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+      maxAge:7 * 24 * 60 * 60 * 1000
+    });
     res.status(200).json({
       message: "Login successful",
       user: { id: user.id, username: user.username },
-    });
-    res.cookie("username", user.name, {
-      httpOnly: true,
-      sameSite: "strict",
-      secure: process.NODE_ENV === "production",
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -65,7 +76,7 @@ const login = async (req, res) => {
   }
 };
 const logout = async (req, res) => {
-  res.clearcookie("username");
+  res.clearCookie("token");
   res.status(200).json({ message: "Logged out Successfully" });
 };
 module.exports = { signup, login, logout };
