@@ -1,7 +1,7 @@
 const express = require("express");
 const route = express.Router();
 const { create, fetch, update, Delete, getItem, users, usercreatedby } = require("./sql_controller/S_ItemController");
-const { login, signup } = require("./sql_controller/S_auth");
+const { login, signup , logout} = require("./sql_controller/S_auth");
 
 route.get("/fetch", fetch);
 
@@ -18,5 +18,7 @@ route.get("/users", users);
 
 route.post("/signup", signup);
 route.post("/login", login);
+
+route.post('/logout', logout);
 
 module.exports = route;

@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const cookieParser = require("cookie-parser");
 const app = express();
 const port = process.env.PORT;
 const pool = require("./database"); // This is your MySQL connection pool
@@ -7,6 +8,8 @@ const pool = require("./database"); // This is your MySQL connection pool
 const cors = require("cors");
 app.use(cors());
 app.use(express.json());
+
+app.use(cookieParser())
 
 // Routes
 app.use("/api/item", require("./routes"));
@@ -21,6 +24,7 @@ app.get("/", async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT 1");
     res.send("Database connection is working!");
+    // console.log("DB connection successful:", rows);
   } catch (error) {
     console.error("DB check error:", error.message);
     res.status(500).send("Database connection failed");
