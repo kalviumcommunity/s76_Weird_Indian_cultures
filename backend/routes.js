@@ -3,18 +3,20 @@ const route = express.Router();
 const { create, fetch, update, Delete, getItem, users, usercreatedby } = require("./sql_controller/S_ItemController");
 const { login, signup , logout} = require("./sql_controller/S_auth");
 
-route.get("/fetch", fetch);
+const authenticate =require('./middleware/authMiddleware')
 
-route.post("/create", create);
+route.get("/fetch", authenticate, fetch);
 
-route.put("/update/:id", update);
+route.post("/create", authenticate, create);
 
-route.delete("/delete/:id", Delete);
+route.put("/update/:id", authenticate, update);
 
-route.get("/fetch/:id", getItem);
+route.delete("/delete/:id", authenticate, Delete);
 
-route.get("/usercreatedby/:userId", usercreatedby);
-route.get("/users", users);
+route.get("/fetch/:id", authenticate, getItem);
+
+route.get("/usercreatedby/:userId", authenticate, usercreatedby);
+route.get("/users", authenticate, users);
 
 route.post("/signup", signup);
 route.post("/login", login);
