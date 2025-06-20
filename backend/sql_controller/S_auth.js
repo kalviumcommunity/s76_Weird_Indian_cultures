@@ -1,5 +1,5 @@
 const bcrypt = require("bcrypt");
-const pool = require("../db");
+const pool = require("../database");
 const jwt = require("jsonwebtoken");
 // 🔹 Signup Route
 const JWT_SECRET = process.env.JWT_SECRET;

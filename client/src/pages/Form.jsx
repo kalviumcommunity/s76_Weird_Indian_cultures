@@ -1,162 +1,244 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate, useParams } from "react-router-dom";
 
-function Form() {
-  const storedUserId = localStorage.getItem("userId");
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const isEdit = Boolean(id);
-
-  const [formData, setFormData] = useState({
+export default function Form({ onCreated }) {
+  const [users, setUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(localStorage.getItem("userId") || "");
+  const [form, setForm] = useState({
     CultureName: "",
     CultureDescription: "",
     Region: "",
     Significance: "",
-    created_by: storedUserId || "", // fallback to empty string
+    image: null,
+    video: null,
   });
-
-  const [users, setUsers] = useState([]);
-  const [message, setMessage] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     axios.get("http://localhost:5000/api/item/users")
-      .then((res) => {
-        setUsers(res.data); // Ensure response structure matches expectations
-      })
-      .catch((err) => console.error("Failed to load users:", err));
+      .then(res => setUsers(res.data || []))
+      .catch(() => setUsers([]));
   }, []);
 
-  useEffect(() => {
-    if (id) {
-      axios.get(`http://localhost:5000/api/item/fetch/${id}`)
-        .then((response) => {
-          const data = response.data || response.data.item;
-          setFormData({
-            CultureName: data.CultureName || "",
-            CultureDescription: data.CultureDescription || "",
-            Region: data.Region || "",
-            Significance: data.Significance || "",
-            created_by: data.created_by || storedUserId,
-          });
-        })
-        .catch((error) => {
-          console.error("Error fetching data:", error);
-          setMessage("Error fetching data.");
-        });
-    }
-  }, [id, storedUserId]);
+  const handleUserSelect = (e) => {
+    setSelectedUser(e.target.value);
+    localStorage.setItem("userId", e.target.value);
+  };
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleInput = (e) => {
+    const { name, value, files } = e.target;
+    setForm((f) => ({
+      ...f,
+      [name]: files ? files[0] : value,
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const { CultureName, CultureDescription, Region, Significance, created_by } = formData;
-
-    if (!CultureName || !CultureDescription || !Region || !Significance || !created_by) {
-      setMessage("Please fill all fields.");
+    if (!selectedUser) return alert("Please select a user.");
+    if (
+      form.CultureName.length < 3 ||
+      form.CultureDescription.length < 10 ||
+      form.Region.length < 3 ||
+      form.Significance.length < 10
+    ) {
+      alert("Please fill all fields with valid lengths.");
       return;
     }
+    const formData = new FormData();
+    formData.append("CultureName", form.CultureName);
+    formData.append("CultureDescription", form.CultureDescription);
+    formData.append("Region", form.Region);
+    formData.append("Significance", form.Significance);
+    formData.append("created_by", Number(selectedUser)); // Ensure number type!
+    if (form.image) formData.append("image", form.image);
+    if (form.video) formData.append("video", form.video);
 
-    setIsSubmitting(true);
+    setLoading(true);
     try {
-      if (isEdit) {
-        await axios.put(`http://localhost:5000/api/item/update/${id}`, formData);
-        setMessage("Data updated successfully!");
-      } else {
-        await axios.post("http://localhost:5000/api/item/create", formData);
-        setMessage("Data submitted successfully!");
-      }
-      navigate("/home");
-    } catch (error) {
-      console.error("Error submitting data:", error);
-      setMessage(error.response?.data?.message || "Error submitting data.");
+      await axios.post("http://localhost:5000/api/item/create", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        withCredentials: true,
+      });
+      alert("Item created successfully!");
+      setForm({
+        CultureName: "",
+        CultureDescription: "",
+        Region: "",
+        Significance: "",
+        image: null,
+        video: null,
+      });
+      if (onCreated) onCreated();
+    } catch (err) {
+      alert(
+        err.response?.data?.message ||
+          "Error creating item. Check your input and try again."
+      );
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100">
-      <form onSubmit={handleSubmit} className="bg-white shadow-lg rounded-xl p-8 w-full max-w-lg">
-        <h2 className="text-3xl font-semibold text-orange-600 text-center mb-6">
-          {isEdit ? "Edit Cultural Entity" : "Add Cultural Entity"}
-        </h2>
-
-        {/* All Input Fields */}
-        <label className="block mb-2 text-gray-700 font-medium">Culture Name</label>
-        <input
-          type="text"
-          name="CultureName"
-          value={formData.CultureName}
-          onChange={handleChange}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-orange-500"
-          required
-        />
-
-        <label className="block mt-4 mb-2 text-gray-700 font-medium">Culture Description</label>
-        <textarea
-          name="CultureDescription"
-          value={formData.CultureDescription}
-          onChange={handleChange}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-orange-500"
-          required
-        />
-
-        <label className="block mt-4 mb-2 text-gray-700 font-medium">Region</label>
-        <input
-          type="text"
-          name="Region"
-          value={formData.Region}
-          onChange={handleChange}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-orange-500"
-          required
-        />
-
-        <label className="block mt-4 mb-2 text-gray-700 font-medium">Significance</label>
-        <textarea
-          name="Significance"
-          value={formData.Significance}
-          onChange={handleChange}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-orange-500"
-          required
-        />
-
-        <label className="block mt-4 mb-2 text-gray-700 font-medium">select user</label>
-        <select
-          name="created_by"
-          value={formData.created_by}
-          onChange={handleChange}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-orange-500"
-          required
-        >
-          <option value="">Select User</option>
-          {users.map((user) => (
-            <option key={user.id} value={user.id}>{user.username}</option>
-          ))}
-        </select>
-
-        <div className="flex justify-center mt-6">
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+    <div
+      className="form-container"
+      style={{
+        maxWidth: 540,
+        margin: "40px auto",
+        padding: 32,
+        background: "#f6f6fa",
+        borderRadius: 16,
+        boxShadow: "0 4px 24px 0 rgba(0,0,0,0.11)",
+      }}
+    >
+      <h2 style={{ marginBottom: 16, textAlign: "center" }}>
+        Create Cultural Item
+      </h2>
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: "flex", flexDirection: "column", gap: 16 }}
+        encType="multipart/form-data"
+      >
+        <label>
+          <span style={{ display: "block", marginBottom: 4 }}>User:</span>
+          <select
+            value={selectedUser}
+            onChange={handleUserSelect}
+            required
+            style={{
+              padding: "8px",
+              borderRadius: 8,
+              border: "1px solid #bbb",
+              width: "100%",
+            }}
           >
-            {isSubmitting ? "Submitting..." : isEdit ? "Update Item" : "Create Item"}
-          </button>
-        </div>
-
-        {message && (
-          <div className="mt-4 text-center text-sm text-red-500">
-            {message}
-          </div>
-        )}
+            <option value="">Select User</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.username}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span style={{ display: "block", marginBottom: 4 }}>Culture Name:</span>
+          <input
+            name="CultureName"
+            value={form.CultureName}
+            onChange={handleInput}
+            placeholder="Culture Name"
+            minLength={3}
+            maxLength={100}
+            required
+            autoComplete="off"
+            style={{
+              padding: "8px",
+              borderRadius: 8,
+              border: "1px solid #bbb",
+              width: "100%",
+            }}
+          />
+        </label>
+        <label>
+          <span style={{ display: "block", marginBottom: 4 }}>
+            Culture Description:
+          </span>
+          <textarea
+            name="CultureDescription"
+            value={form.CultureDescription}
+            onChange={handleInput}
+            placeholder="Culture Description"
+            minLength={10}
+            maxLength={500}
+            required
+            rows={3}
+            style={{
+              padding: "8px",
+              borderRadius: 8,
+              border: "1px solid #bbb",
+              width: "100%",
+              resize: "vertical",
+            }}
+          />
+        </label>
+        <label>
+          <span style={{ display: "block", marginBottom: 4 }}>Region:</span>
+          <input
+            name="Region"
+            value={form.Region}
+            onChange={handleInput}
+            placeholder="Region"
+            minLength={3}
+            maxLength={100}
+            required
+            autoComplete="off"
+            style={{
+              padding: "8px",
+              borderRadius: 8,
+              border: "1px solid #bbb",
+              width: "100%",
+            }}
+          />
+        </label>
+        <label>
+          <span style={{ display: "block", marginBottom: 4 }}>Significance:</span>
+          <textarea
+            name="Significance"
+            value={form.Significance}
+            onChange={handleInput}
+            placeholder="Significance"
+            minLength={10}
+            maxLength={500}
+            required
+            rows={3}
+            style={{
+              padding: "8px",
+              borderRadius: 8,
+              border: "1px solid #bbb",
+              width: "100%",
+              resize: "vertical",
+            }}
+          />
+        </label>
+        <label>
+          <span style={{ display: "block", marginBottom: 4 }}>Image:</span>
+          <input
+            type="file"
+            accept="image/*"
+            name="image"
+            onChange={handleInput}
+            style={{ padding: "6px" }}
+          />
+        </label>
+        <label>
+          <span style={{ display: "block", marginBottom: 4 }}>Video:</span>
+          <input
+            type="file"
+            accept="video/*"
+            name="video"
+            onChange={handleInput}
+            style={{ padding: "6px" }}
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            padding: "12px",
+            borderRadius: 8,
+            background: "#ff8800",
+            color: "#fff",
+            fontWeight: "bold",
+            border: "none",
+            cursor: loading ? "not-allowed" : "pointer",
+            marginTop: 8,
+            fontSize: 18,
+          }}
+        >
+          {loading ? "Submitting..." : "Create"}
+        </button>
       </form>
     </div>
   );
 }
-
-export default Form;

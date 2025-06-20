@@ -2,14 +2,19 @@ require("dotenv").config();
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const app = express();
-const port = process.env.PORT;
-const pool = require("./database"); // This is your MySQL connection pool
-
+const port = process.env.PORT || 5000;
+const pool = require("./database");
 const cors = require("cors");
-app.use(cors());
-app.use(express.json());
 
-app.use(cookieParser())
+// CORS configuration
+app.use(cors({
+  origin: 'http://localhost:5173', // <-- Your frontend's URL and port
+  credentials: true
+}));
+
+app.use(express.json());
+app.use(cookieParser());
+app.use('/uploads', express.static('public/uploads')); // Serve uploads statically
 
 // Routes
 app.use("/api/item", require("./routes"));
@@ -24,11 +29,18 @@ app.get("/", async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT 1");
     res.send("Database connection is working!");
-    // console.log("DB connection successful:", rows);
   } catch (error) {
     console.error("DB check error:", error.message);
     res.status(500).send("Database connection failed");
   }
+});
+
+// Multer error handler for better error messages
+app.use((err, req, res, next) => {
+  if (err instanceof require('multer').MulterError || err.message.includes("Only image/video files")) {
+    return res.status(400).json({ message: err.message });
+  }
+  next(err);
 });
 
 // Start server
