@@ -65,9 +65,9 @@ export default function HomePage() {
     fetchCultures(userId);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     try {
-      await axios.delete(API_ROUTES.deleteItem(id));
+      await axios.delete(API_ROUTES.deleteItem(id), { withCredentials: true });
       setCultures((prev) => prev.filter((culture) => culture.id !== id));
       alert('Entry deleted successfully!');
     } catch {
@@ -164,13 +164,13 @@ export default function HomePage() {
                 role="button"
                 tabIndex={0}
                 className={`flex cursor-pointer flex-col items-center ${
-                  selectedUser === String(user.id)
+                  selectedUser === user.id
                     ? 'opacity-100'
                     : 'opacity-60 hover:opacity-100'
                 }`}
-                onClick={() => handleUserSelect(String(user.id))}
+                onClick={() => handleUserSelect(user.id)}
                 onKeyDown={(e) =>
-                  e.key === 'Enter' && handleUserSelect(String(user.id))
+                  e.key === 'Enter' && handleUserSelect(user.id)
                 }
               >
                 <div className="h-16 w-16 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 p-0.5">

@@ -18,12 +18,12 @@ export const API_ROUTES = {
 };
 
 export interface UserSummary {
-  id: number;
+  id: string;
   username: string;
 }
 
 export interface CultureItem {
-  id: number;
+  id: string;
   CultureName: string;
   CultureDescription: string;
   Region: string;
@@ -31,10 +31,11 @@ export interface CultureItem {
   ImageURL?: string | null;
   VideoURL?: string | null;
   Likes?: number | null;
+  created_by?: string | null;
 }
 
 export interface CultureComment {
-  id: number;
+  id: string;
   comment: string;
-  username?: string;
+  username?: string | null;
 }

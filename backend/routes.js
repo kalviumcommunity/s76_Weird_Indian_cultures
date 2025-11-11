@@ -10,9 +10,9 @@ const {
   saveItem,
   addComment,
   getComments
-} = require('./sql_controller/S_ItemController');
+} = require('./controller/ItemController');
 
-const { signup, login, logout } = require('./sql_controller/S_auth');
+const { signup, login, logout } = require('./controller/Auth');
 
 const express = require('express');
 const route = express.Router();

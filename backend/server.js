@@ -1,18 +1,28 @@
 require("dotenv").config();
 const express = require("express");
 const cookieParser = require("cookie-parser");
+const connectDB = require("./database");
 const app = express();
 const port = process.env.PORT || 5000;
-const pool = require("./database");
 const cors = require("cors");
 
-// CORS configuration
+const allowedOrigins = (process.env.CLIENT_URLS || "http://localhost:5173")
+  .split(",")
+  .map((url) => url.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: 'http://localhost:5173', // <-- Your frontend's URL and port
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("Not allowed by CORS"));
+  },
   credentials: true
 }));
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use('/uploads', express.static('public/uploads')); // Serve uploads statically
 
@@ -24,15 +34,9 @@ app.get("/ping", (req, res) => {
   res.send("Pong!");
 });
 
-// Health check route to verify DB connection
-app.get("/", async (req, res) => {
-  try {
-    const [rows] = await pool.query("SELECT 1");
-    res.send("Database connection is working!");
-  } catch (error) {
-    console.error("DB check error:", error.message);
-    res.status(500).send("Database connection failed");
-  }
+// Health check route to verify server is up
+app.get("/", (req, res) => {
+  res.send("API is running");
 });
 
 // Multer error handler for better error messages
@@ -43,7 +47,17 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-// Start server
-app.listen(port, () => {
-  console.log(`✅ Server is running at http://localhost:${port}`);
-});
+// Connect to DB first, then start the server
+const startServer = async () => {
+  try {
+    await connectDB();
+    app.listen(port, () => {
+      console.log(`✅ Server is running at http://localhost:${port}`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error.message);
+    process.exit(1);
+  }
+};
+
+startServer();
