@@ -54,7 +54,7 @@ export default function SignUpPage() {
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="mt-1 w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-[#FF9933]"
+              className="mt-1 w-full rounded-md border text-black border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-[#FF9933]"
               required
             />
           </div>

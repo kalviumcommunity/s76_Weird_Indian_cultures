@@ -19,7 +19,7 @@ import {
 } from '@/lib/constants';
 
 type Props = CultureItem & {
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void;
 };
 
 const colorOptions = [
@@ -51,11 +51,14 @@ export default function CulturalEntity({
   const [commentText, setCommentText] = useState('');
 
   const accentColor = useMemo(() => {
-    const numericId = Number(id);
-    if (Number.isNaN(numericId)) {
+    if (!id) {
       return colorOptions[0];
     }
-    return colorOptions[numericId % colorOptions.length];
+    const hash = Array.from(id).reduce(
+      (acc, char) => acc + char.charCodeAt(0),
+      0
+    );
+    return colorOptions[hash % colorOptions.length];
   }, [id]);
 
   useEffect(() => {
@@ -157,7 +160,7 @@ export default function CulturalEntity({
               </button>
               <button
                 type="button"
-                onClick={() => onDelete(Number(id))}
+                onClick={() => onDelete(id)}
                 className="block w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-gray-800"
               >
                 Delete

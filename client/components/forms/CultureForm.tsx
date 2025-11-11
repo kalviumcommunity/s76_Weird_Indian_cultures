@@ -31,22 +31,27 @@ export default function CultureForm({ itemId }: CultureFormProps) {
   const [selectedUser, setSelectedUser] = useState('');
   const [form, setForm] = useState<CultureFormState>(defaultFormState);
   const [loading, setLoading] = useState(false);
+  const [formKey, setFormKey] = useState(Date.now()); // used to reset file inputs
 
-  useEffect(() => {
-    const storedUser =
-      typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
-    if (storedUser) {
-      setSelectedUser(storedUser);
-    }
-  }, []);
-
+  // ✅ Fetch users and restore selected user
   useEffect(() => {
     axios
       .get<UserSummary[]>(API_ROUTES.users)
-      .then((res) => setUsers(res.data ?? []))
+      .then((res) => {
+        const data = res.data ?? [];
+        setUsers(data);
+
+        const storedUser =
+          typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
+
+        if (storedUser && data.find((u) => u.id === storedUser)) {
+          setSelectedUser(storedUser);
+        }
+      })
       .catch(() => setUsers([]));
   }, []);
 
+  // ✅ Handle user selection
   const handleUserSelect = (value: string) => {
     setSelectedUser(value);
     if (typeof window !== 'undefined') {
@@ -54,22 +59,27 @@ export default function CultureForm({ itemId }: CultureFormProps) {
     }
   };
 
+  // ✅ Handle text & file inputs safely
   const handleInput = (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    const { name, value, files } = event.target as HTMLInputElement;
+    const target = event.target as HTMLInputElement;
+    const { name, value, files } = target;
     setForm((prev) => ({
       ...prev,
-      [name]: files ? files[0] : value,
+      [name]: files && files.length > 0 ? files[0] : value,
     }));
   };
 
+  // ✅ Form submit
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
     if (!selectedUser) {
       alert('Please select a user.');
       return;
     }
+
     if (
       form.CultureName.length < 3 ||
       form.CultureDescription.length < 10 ||
@@ -85,22 +95,35 @@ export default function CultureForm({ itemId }: CultureFormProps) {
     formData.append('CultureDescription', form.CultureDescription);
     formData.append('Region', form.Region);
     formData.append('Significance', form.Significance);
-    formData.append('created_by', String(Number(selectedUser)));
+    formData.append('created_by', selectedUser);
     if (form.image) formData.append('image', form.image);
     if (form.video) formData.append('video', form.video);
 
     setLoading(true);
     try {
-      await axios.post(API_ROUTES.createItem, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        withCredentials: true,
-      });
-      alert('Item created successfully!');
+      if (itemId) {
+        // ✅ Editing mode
+        await axios.put(`${API_ROUTES.updateItem}/${itemId}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          withCredentials: true,
+        });
+        alert('Item updated successfully!');
+      } else {
+        // ✅ Create mode
+        await axios.post(API_ROUTES.createItem, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          withCredentials: true,
+        });
+        alert('Item created successfully!');
+      }
+
+      // ✅ Reset form & file inputs
       setForm(defaultFormState);
+      setFormKey(Date.now());
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? 'Error creating item. Check your input and try again.';
+          ?.message ?? 'Error submitting item. Please try again.';
       alert(message);
     } finally {
       setLoading(false);
@@ -112,11 +135,14 @@ export default function CultureForm({ itemId }: CultureFormProps) {
       <h2 className="mb-6 text-center text-3xl font-extrabold text-[#138808]">
         {itemId ? 'Edit Cultural Item' : 'Create Cultural Item'}
       </h2>
+
       <form
+        key={formKey} // ensures file inputs reset
         onSubmit={handleSubmit}
         className="flex flex-col gap-4"
         encType="multipart/form-data"
       >
+        {/* User Selection */}
         <label className="text-sm font-medium text-[#FF9933]">
           User
           <select
@@ -134,6 +160,7 @@ export default function CultureForm({ itemId }: CultureFormProps) {
           </select>
         </label>
 
+        {/* Culture Name */}
         <label className="text-sm font-medium text-[#FF9933]">
           Culture Name
           <input
@@ -149,6 +176,7 @@ export default function CultureForm({ itemId }: CultureFormProps) {
           />
         </label>
 
+        {/* Description */}
         <label className="text-sm font-medium text-[#FF9933]">
           Culture Description
           <textarea
@@ -164,6 +192,7 @@ export default function CultureForm({ itemId }: CultureFormProps) {
           />
         </label>
 
+        {/* Region */}
         <label className="text-sm font-medium text-[#FF9933]">
           Region
           <input
@@ -179,6 +208,7 @@ export default function CultureForm({ itemId }: CultureFormProps) {
           />
         </label>
 
+        {/* Significance */}
         <label className="text-sm font-medium text-[#FF9933]">
           Significance
           <textarea
@@ -194,6 +224,7 @@ export default function CultureForm({ itemId }: CultureFormProps) {
           />
         </label>
 
+        {/* Image */}
         <label className="text-sm font-medium text-[#FF9933]">
           Image
           <input
@@ -205,6 +236,7 @@ export default function CultureForm({ itemId }: CultureFormProps) {
           />
         </label>
 
+        {/* Video */}
         <label className="text-sm font-medium text-[#FF9933]">
           Video
           <input
@@ -216,6 +248,7 @@ export default function CultureForm({ itemId }: CultureFormProps) {
           />
         </label>
 
+        {/* Submit Button */}
         <button
           type="submit"
           disabled={loading}

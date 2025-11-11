@@ -1,37 +1,92 @@
 const Joi = require("joi");
-const pool = require("../database");
+const mongoose = require("mongoose");
+const Item = require("../model/schema");
+const User = require("../model/User");
+const Comment = require("../model/Comment");
 
-// Joi validation for item creation and update (without created_by)
+const objectIdValidator = Joi.string()
+  .trim()
+  .custom((value, helpers) => {
+    if (!mongoose.Types.ObjectId.isValid(value)) {
+      return helpers.error("any.invalid");
+    }
+    return value;
+  }, "ObjectId validation")
+  .messages({ "any.invalid": "Invalid ID format" });
+
 const itemValidationSchema = Joi.object({
   CultureName: Joi.string().min(3).max(100).required(),
   CultureDescription: Joi.string().min(10).max(500).required(),
   Region: Joi.string().min(3).max(100).required(),
   Significance: Joi.string().min(10).max(500).required(),
-  created_by: Joi.number().required(),
+  created_by: objectIdValidator.required(),
 });
+
+const updateValidationSchema = itemValidationSchema.fork("created_by", (schema) =>
+  schema.optional()
+);
+
+const formatItem = (item) => ({
+  id: item._id.toString(),
+  CultureName: item.CultureName,
+  CultureDescription: item.CultureDescription,
+  Region: item.Region,
+  Significance: item.Significance,
+  ImageURL: item.ImageURL,
+  VideoURL: item.VideoURL,
+  Likes: item.Likes ?? 0,
+  Saves: item.Saves ?? 0,
+  created_by: item.created_by?.toString() ?? null,
+});
+
+const formatComment = (comment) => ({
+  id: comment._id.toString(),
+  comment: comment.comment,
+  username: comment.user?.username ?? "Anonymous",
+});
+
+const validateObjectIdParam = (id, res) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    res.status(400).json({ message: "Invalid ID" });
+    return false;
+  }
+  return true;
+};
+
+const sanitizeId = (value) =>
+  typeof value === "string" ? value.trim() : value;
 
 // Create a new item
 const create = async (req, res) => {
   try {
-    const { error } = itemValidationSchema.validate(req.body);
-    if (error) return res.status(400).json({ message: error.details[0].message });
+    const payload = {
+      CultureName: req.body.CultureName,
+      CultureDescription: req.body.CultureDescription,
+      Region: req.body.Region,
+      Significance: req.body.Significance,
+      created_by: sanitizeId(req.body.created_by),
+    };
 
-    const { CultureName, CultureDescription, Region, Significance } = req.body;
-    const created_by = req.user.id;
+    const { error, value } = itemValidationSchema.validate(payload);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+
+    const creator = await User.findById(value.created_by);
+    if (!creator) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
 
     const imageURL = req.files?.image ? `/uploads/${req.files.image[0].filename}` : null;
     const videoURL = req.files?.video ? `/uploads/${req.files.video[0].filename}` : null;
 
-    // Make sure user exists (optional)
-    const [userRows] = await pool.execute("SELECT * FROM users WHERE id = ?", [created_by]);
-    if (userRows.length === 0) return res.status(400).json({ message: "Invalid user ID" });
+    const item = await Item.create({
+      ...value,
+      ImageURL: imageURL,
+      VideoURL: videoURL,
+    });
 
-    const [result] = await pool.execute(
-      `INSERT INTO Item (CultureName, CultureDescription, Region, Significance, created_by, ImageURL, VideoURL) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [CultureName, CultureDescription, Region, Significance, created_by, imageURL, videoURL]
-    );
-
-    res.status(201).json({ message: "Item created successfully!", itemId: result.insertId });
+    res.status(201).json({ message: "Item created successfully!", item: formatItem(item) });
   } catch (error) {
     console.error("Error creating item:", error);
     res.status(500).json({ message: "Internal Server Error", error: error.message });
@@ -41,8 +96,8 @@ const create = async (req, res) => {
 // Fetch all items
 const fetch = async (req, res) => {
   try {
-    const [items] = await pool.execute("SELECT * FROM Item");
-    res.json(items);
+    const items = await Item.find().sort({ createdAt: -1 });
+    res.json(items.map(formatItem));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -51,11 +106,15 @@ const fetch = async (req, res) => {
 // Fetch single item
 const getItem = async (req, res) => {
   try {
-    const { id } = req.params;
-    const [itemRows] = await pool.execute("SELECT * FROM Item WHERE id = ?", [id]);
-    if (itemRows.length === 0) return res.status(404).json({ message: "Item not found." });
+    const id = sanitizeId(req.params.id);
+    if (!validateObjectIdParam(id, res)) return;
 
-    res.json(itemRows[0]);
+    const item = await Item.findById(id);
+    if (!item) {
+      return res.status(404).json({ message: "Item not found." });
+    }
+
+    res.json(formatItem(item));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -64,39 +123,55 @@ const getItem = async (req, res) => {
 // Update item
 const update = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { error } = itemValidationSchema.validate(req.body);
-    if (error) return res.status(400).json({ message: error.details[0].message });
+    const id = sanitizeId(req.params.id);
+    if (!validateObjectIdParam(id, res)) return;
 
-    const { CultureName, CultureDescription, Region, Significance } = req.body;
-    const created_by = req.user.id;
-
-    // Make sure user exists (optional)
-    const [userRows] = await pool.execute("SELECT * FROM users WHERE id = ?", [created_by]);
-    if (userRows.length === 0) return res.status(400).json({ message: "Invalid user ID" });
-
-    let imageSet = '', imageValue = null;
-    if (req.files && req.files.image) {
-      imageSet = ', ImageURL = ?';
-      imageValue = `/uploads/${req.files.image[0].filename}`;
-    }
-    let videoSet = '', videoValue = null;
-    if (req.files && req.files.video) {
-      videoSet = ', VideoURL = ?';
-      videoValue = `/uploads/${req.files.video[0].filename}`;
+    const item = await Item.findById(id);
+    if (!item) {
+      return res.status(404).json({ message: "Item not found." });
     }
 
-    let query = `UPDATE Item SET CultureName = ?, CultureDescription = ?, Region = ?, Significance = ?, created_by = ?${imageSet}${videoSet} WHERE id = ?`;
-    let params = [CultureName, CultureDescription, Region, Significance, created_by];
-    if (imageSet) params.push(imageValue);
-    if (videoSet) params.push(videoValue);
-    params.push(id);
+    const bodyCreatorId = sanitizeId(req.body.created_by);
+    const creatorId = req.user?.id || bodyCreatorId || item.created_by.toString();
+    if (!mongoose.Types.ObjectId.isValid(creatorId)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
 
-    const [result] = await pool.execute(query, params);
+    const payload = {
+      CultureName: req.body.CultureName,
+      CultureDescription: req.body.CultureDescription,
+      Region: req.body.Region,
+      Significance: req.body.Significance,
+      created_by: creatorId,
+    };
 
-    if (result.affectedRows === 0) return res.status(404).json({ message: "Item not found." });
+    const { error, value } = updateValidationSchema.validate(payload);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
 
-    res.json({ message: "Item updated successfully!" });
+    const creator = await User.findById(value.created_by);
+    if (!creator) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    item.CultureName = value.CultureName;
+    item.CultureDescription = value.CultureDescription;
+    item.Region = value.Region;
+    item.Significance = value.Significance;
+    item.created_by = value.created_by;
+
+    if (req.files?.image) {
+      item.ImageURL = `/uploads/${req.files.image[0].filename}`;
+    }
+
+    if (req.files?.video) {
+      item.VideoURL = `/uploads/${req.files.video[0].filename}`;
+    }
+
+    await item.save();
+
+    res.json({ message: "Item updated successfully!", item: formatItem(item) });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -105,9 +180,15 @@ const update = async (req, res) => {
 // Delete item
 const Delete = async (req, res) => {
   try {
-    const { id } = req.params;
-    const [result] = await pool.execute("DELETE FROM Item WHERE id = ?", [id]);
-    if (result.affectedRows === 0) return res.status(404).json({ message: "Item not found." });
+    const id = sanitizeId(req.params.id);
+    if (!validateObjectIdParam(id, res)) return;
+
+    const deletedItem = await Item.findByIdAndDelete(id);
+    if (!deletedItem) {
+      return res.status(404).json({ message: "Item not found." });
+    }
+
+    await Comment.deleteMany({ item: id });
 
     res.json({ message: "Item deleted successfully!" });
   } catch (error) {
@@ -118,9 +199,28 @@ const Delete = async (req, res) => {
 // Like item
 const likeItem = async (req, res) => {
   try {
-    const { id } = req.params;
-    const [result] = await pool.execute(`UPDATE Item SET Likes = Likes + 1 WHERE id = ?`, [id]);
-    if (result.affectedRows === 0) return res.status(404).json({ message: "Item not found" });
+    const id = sanitizeId(req.params.id);
+    if (!validateObjectIdParam(id, res)) return;
+
+    const item = await Item.findById(id);
+    if (!item) {
+      return res.status(404).json({ message: "Item not found" });
+    }
+
+    const userId = req.user?.id;
+
+    if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+      const alreadyLiked = item.likedBy.some((likedId) => likedId.toString() === userId);
+      if (alreadyLiked) {
+        return res.json({ message: "Already liked" });
+      }
+      item.likedBy.push(userId);
+      item.Likes = item.likedBy.length;
+    } else {
+      item.Likes = (item.Likes || 0) + 1;
+    }
+
+    await item.save();
 
     res.json({ message: "Liked!" });
   } catch (error) {
@@ -131,10 +231,39 @@ const likeItem = async (req, res) => {
 // Save item
 const saveItem = async (req, res) => {
   try {
-    const { item_id } = req.body;
-    const user_id = req.user.id;
-    await pool.execute("INSERT INTO Saves (item_id, user_id) VALUES (?, ?)", [item_id, user_id]);
-    await pool.execute("UPDATE Item SET Saves = Saves + 1 WHERE id = ?", [item_id]);
+    const itemId = sanitizeId(req.body.item_id);
+    const userId = req.user?.id || sanitizeId(req.body.user_id);
+
+    if (!itemId) {
+      return res.status(400).json({ message: "Item ID is required." });
+    }
+    if (!validateObjectIdParam(itemId, res)) return;
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Valid user ID is required." });
+    }
+
+    const [item, user] = await Promise.all([
+      Item.findById(itemId),
+      User.findById(userId),
+    ]);
+
+    if (!item) {
+      return res.status(404).json({ message: "Item not found." });
+    }
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    const alreadySaved = item.savedBy.some((savedId) => savedId.toString() === userId);
+    if (alreadySaved) {
+      return res.json({ message: "Item already saved." });
+    }
+
+    item.savedBy.push(userId);
+    item.Saves = item.savedBy.length;
+    await item.save();
+
     res.json({ message: "Item saved successfully." });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -144,13 +273,42 @@ const saveItem = async (req, res) => {
 // Comment on item
 const addComment = async (req, res) => {
   try {
-    const { item_id, comment } = req.body;
-    const user_id = req.user.id;
-    await pool.execute(
-      "INSERT INTO Comments (item_id, user_id, comment) VALUES (?, ?, ?)",
-      [item_id, user_id, comment]
-    );
-    res.status(201).json({ message: "Comment added successfully!" });
+    const itemId = sanitizeId(req.body.item_id);
+    const userId = sanitizeId(req.body.user_id);
+    const { comment } = req.body;
+    if (!itemId || !userId || typeof comment !== "string" || !comment.trim()) {
+      return res.status(400).json({ message: "Missing required fields." });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(itemId) || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid item or user ID." });
+    }
+
+    const [item, user] = await Promise.all([
+      Item.findById(itemId),
+      User.findById(userId),
+    ]);
+
+    if (!item) {
+      return res.status(404).json({ message: "Item not found." });
+    }
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    const newComment = await Comment.create({
+      item: itemId,
+      user: userId,
+      comment: comment.trim(),
+    });
+
+    await newComment.populate("user", "username");
+
+    res.status(201).json({
+      message: "Comment added successfully!",
+      comment: formatComment(newComment),
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -159,14 +317,14 @@ const addComment = async (req, res) => {
 // Get comments for item
 const getComments = async (req, res) => {
   try {
-    const { itemId } = req.params;
-    const [comments] = await pool.execute(
-      `SELECT Comments.*, users.username FROM Comments 
-       JOIN users ON Comments.user_id = users.id 
-       WHERE Comments.item_id = ? ORDER BY Comments.created_at DESC`,
-      [itemId]
-    );
-    res.json(comments);
+    const itemId = sanitizeId(req.params.itemId);
+    if (!validateObjectIdParam(itemId, res)) return;
+
+    const comments = await Comment.find({ item: itemId })
+      .populate("user", "username")
+      .sort({ createdAt: -1 });
+
+    res.json(comments.map(formatComment));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -175,8 +333,13 @@ const getComments = async (req, res) => {
 // Get all users
 const users = async (req, res) => {
   try {
-    const [rows] = await pool.execute("SELECT * FROM users");
-    res.json(rows);
+    const allUsers = await User.find().select("username").sort({ username: 1 });
+    res.json(
+      allUsers.map((user) => ({
+        id: user._id.toString(),
+        username: user.username,
+      }))
+    );
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -185,16 +348,11 @@ const users = async (req, res) => {
 // Items created by a user
 const usercreatedby = async (req, res) => {
   try {
-    const { userId } = req.params;
-    if (isNaN(userId)) return res.status(400).json({ message: "Invalid user ID" });
+    const userId = sanitizeId(req.params.userId);
+    if (!validateObjectIdParam(userId, res)) return;
 
-    const [items] = await pool.execute(
-      `SELECT Item.*, users.username FROM Item 
-       JOIN users ON Item.created_by = users.id 
-       WHERE Item.created_by = ?`,
-      [userId]
-    );
-    res.json(items);
+    const items = await Item.find({ created_by: userId }).sort({ createdAt: -1 });
+    res.json(items.map(formatItem));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
