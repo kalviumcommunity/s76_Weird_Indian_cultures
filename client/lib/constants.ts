@@ -1,5 +1,5 @@
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:5000';
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://s76-weird-indian-cultures-gb7l.onrender.com';
 
 export const API_ROUTES = {
   fetchItems: `${API_BASE_URL}/api/item/fetch`,
@@ -13,6 +13,7 @@ export const API_ROUTES = {
     `${API_BASE_URL}/api/item/comments/${id}`,
   addComment: `${API_BASE_URL}/api/item/comment`,
   createItem: `${API_BASE_URL}/api/item/create`,
+  updateItem: `${API_BASE_URL}/api/item/update`,
   signup: `${API_BASE_URL}/api/item/signup`,
   login: `${API_BASE_URL}/api/item/login`,
 };
