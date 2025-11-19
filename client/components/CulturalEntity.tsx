@@ -81,7 +81,7 @@ export default function CulturalEntity({
     if (liked) return;
     try {
       await axios.put(API_ROUTES.likeItem(id), {}, { withCredentials: true });
-      setLikes((prev) => prev + 1);
+      setLikes((prev) => (prev ?? 0) + 1);
       setLiked(true);
     } catch {
       // no-op
@@ -98,7 +98,7 @@ export default function CulturalEntity({
     }
     try {
       await axios.post(
-        API_ROUTES.addComment,
+        API_ROUTES.addComment(id),
         {
           item_id: id,
           user_id: userId,
