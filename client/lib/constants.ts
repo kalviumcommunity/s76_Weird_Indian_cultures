@@ -1,21 +1,19 @@
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://s76-weird-indian-cultures-gb7l.onrender.com';
+// Since backend is now in the same Next.js app, use relative API paths
+export const API_BASE_URL = '';
 
 export const API_ROUTES = {
-  fetchItems: `${API_BASE_URL}/api/item/fetch`,
-  users: `${API_BASE_URL}/api/item/users`,
-  itemsByUser: (userId: string | number) =>
-    `${API_BASE_URL}/api/item/usercreatedby/${userId}`,
-  deleteItem: (id: string | number) =>
-    `${API_BASE_URL}/api/item/delete/${id}`,
-  likeItem: (id: string | number) => `${API_BASE_URL}/api/item/like/${id}`,
-  comments: (id: string | number) =>
-    `${API_BASE_URL}/api/item/comments/${id}`,
-  addComment: `${API_BASE_URL}/api/item/comment`,
-  createItem: `${API_BASE_URL}/api/item/create`,
-  updateItem: `${API_BASE_URL}/api/item/update`,
-  signup: `${API_BASE_URL}/api/item/signup`,
-  login: `${API_BASE_URL}/api/item/login`,
+  fetchItems: `/api/items`,
+  users: `/api/users`,
+  itemsByUser: (userId: string | number) => `/api/items/user/${userId}`,
+  deleteItem: (id: string | number) => `/api/items/${id}`,
+  likeItem: (id: string | number) => `/api/items/${id}/like`,
+  comments: (id: string | number) => `/api/items/${id}/comments`,
+  addComment: (id: string | number) => `/api/items/${id}/comments`,
+  createItem: `/api/items`,
+  updateItem: `/api/items`,
+  signup: `/api/auth/signup`,
+  login: `/api/auth/login`,
+  logout: `/api/auth/logout`,
 };
 
 export interface UserSummary {
