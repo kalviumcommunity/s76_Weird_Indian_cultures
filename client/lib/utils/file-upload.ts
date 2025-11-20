@@ -1,42 +1,41 @@
-import { writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
-
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
-
-export async function ensureUploadDir() {
-  if (!existsSync(UPLOAD_DIR)) {
-    await mkdir(UPLOAD_DIR, { recursive: true });
-  }
-}
-
-export async function saveFile(
-  file: File,
-  fieldName: string
-): Promise<string> {
-  await ensureUploadDir();
-
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-
-  const ext = path.extname(file.name);
-  const filename = `${Date.now()}-${fieldName}${ext}`;
-  const filepath = path.join(UPLOAD_DIR, filename);
-
-  await writeFile(filepath, buffer);
-
-  return `/uploads/${filename}`;
-}
+import cloudinary from '../cloudinary';
 
 export function validateFileType(file: File): boolean {
-  const allowedTypes = /jpeg|jpg|png|gif|mp4|mov|avi/;
-  const ext = path.extname(file.name).toLowerCase();
+  const allowedTypes = /jpeg|jpg|png|gif|mp4|mov|avi|webm/;
   const mimeType = file.type.toLowerCase();
 
   return (
-    allowedTypes.test(ext.substring(1)) &&
-    (mimeType.startsWith('image/') || mimeType.startsWith('video/'))
+    mimeType.startsWith('image/') || mimeType.startsWith('video/')
   );
+}
+
+export async function uploadToCloudinary(
+  file: File,
+  resourceType: 'image' | 'video'
+): Promise<string> {
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        resource_type: resourceType,
+        folder: 'cultura_connect',
+        transformation: resourceType === 'image' 
+          ? [{ width: 1000, height: 1000, crop: 'limit', quality: 'auto' }]
+          : [{ width: 1920, height: 1080, crop: 'limit', quality: 'auto' }],
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(result?.secure_url || '');
+        }
+      }
+    );
+
+    uploadStream.end(buffer);
+  });
 }
 
 export async function handleFileUploads(
@@ -52,14 +51,14 @@ export async function handleFileUploads(
     if (!validateFileType(imageFile)) {
       throw new Error('Invalid image file type');
     }
-    imageURL = await saveFile(imageFile, 'image');
+    imageURL = await uploadToCloudinary(imageFile, 'image');
   }
 
   if (videoFile && videoFile.size > 0) {
     if (!validateFileType(videoFile)) {
       throw new Error('Invalid video file type');
     }
-    videoURL = await saveFile(videoFile, 'video');
+    videoURL = await uploadToCloudinary(videoFile, 'video');
   }
 
   return { image: imageURL, video: videoURL };

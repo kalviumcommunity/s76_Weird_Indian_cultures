@@ -11,15 +11,36 @@ import {
   FaPlus,
   FaSearch,
   FaUser,
+  FaSignInAlt,
+  FaUserPlus,
+  FaSignOutAlt,
 } from 'react-icons/fa';
+import { useAuth } from '@/contexts/AuthContext';
+import axios from 'axios';
+import { API_ROUTES } from '@/lib/constants';
 
 export default function Navbar() {
   const router = useRouter();
   const [searchFocused, setSearchFocused] = useState(false);
   const [showArchaeMenu, setShowArchaeMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const { user, isAuthenticated, logout } = useAuth();
 
   const navigate = (path: string) => {
     router.push(path);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await axios.post(API_ROUTES.LOGOUT);
+      logout();
+      router.push('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      logout();
+      router.push('/');
+    }
+    setShowUserMenu(false);
   };
 
   return (
@@ -91,32 +112,83 @@ export default function Navbar() {
               </span>
             </button>
 
-            <button
-              type="button"
-              className="text-gray-300 hover:text-orange-400"
-            >
-              <FaUser className="text-xl" />
-            </button>
+            {isAuthenticated ? (
+              <>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center gap-2 text-gray-300 hover:text-orange-400"
+                  >
+                    <FaUser className="text-xl" />
+                    <span className="hidden text-sm lg:block">{user?.username}</span>
+                  </button>
 
-            <button
-              type="button"
-              onClick={() => navigate('/form')}
-              className="flex h-10 w-24 items-center justify-center space-x-1 rounded-2xl bg-orange-400 text-white transition-colors hover:bg-orange-500"
-            >
-              <FaPlus size={12} />
-              <span>Add New</span>
-            </button>
+                  {showUserMenu && (
+                    <div className="absolute right-0 mt-2 w-48 rounded-md border border-gray-700 bg-black/90 backdrop-blur-md shadow-lg">
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-2 px-4 py-2 text-left text-gray-300 hover:bg-gray-800 hover:text-orange-400"
+                      >
+                        <FaSignOutAlt /> Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/form')}
+                  className="flex h-10 w-24 items-center justify-center space-x-1 rounded-2xl bg-orange-400 text-white transition-colors hover:bg-orange-500"
+                >
+                  <FaPlus size={12} />
+                  <span>Add New</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => navigate('/login')}
+                  className="flex items-center gap-2 text-gray-300 hover:text-orange-400"
+                >
+                  <FaSignInAlt className="text-xl" />
+                  <span className="hidden text-sm lg:block">Login</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/signup')}
+                  className="flex h-10 px-4 items-center justify-center space-x-1 rounded-2xl bg-orange-400 text-white transition-colors hover:bg-orange-500"
+                >
+                  <FaUserPlus size={14} />
+                  <span>Sign Up</span>
+                </button>
+              </>
+            )}
           </div>
 
           <div className="flex items-center md:hidden">
-            <button
-              type="button"
-              onClick={() => navigate('/form')}
-              className="flex h-10 w-24 items-center justify-center space-x-1 rounded-2xl bg-orange-400 text-white transition-colors hover:bg-orange-500"
-            >
-              <FaPlus size={12} />
-              <span>Add New</span>
-            </button>
+            {isAuthenticated ? (
+              <button
+                type="button"
+                onClick={() => navigate('/form')}
+                className="flex h-10 w-24 items-center justify-center space-x-1 rounded-2xl bg-orange-400 text-white transition-colors hover:bg-orange-500"
+              >
+                <FaPlus size={12} />
+                <span>Add New</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="flex h-10 px-4 items-center justify-center space-x-1 rounded-2xl bg-orange-400 text-white transition-colors hover:bg-orange-500"
+              >
+                <FaSignInAlt size={14} />
+                <span>Login</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

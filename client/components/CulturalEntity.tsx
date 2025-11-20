@@ -17,6 +17,7 @@ import {
   CultureComment,
   CultureItem,
 } from '@/lib/constants';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Props = CultureItem & {
   onDelete: (id: string) => void;
@@ -39,16 +40,23 @@ export default function CulturalEntity({
   ImageURL,
   VideoURL,
   Likes = 0,
+  likedByCurrentUser = false,
   onDelete,
 }: Props) {
   const router = useRouter();
-  const [liked, setLiked] = useState(false);
+  const { user, isAuthenticated } = useAuth();
+  const [liked, setLiked] = useState(likedByCurrentUser);
   const [likes, setLikes] = useState(Likes);
   const [saved, setSaved] = useState(false);
   const [comments, setComments] = useState<CultureComment[]>([]);
   const [showOptions, setShowOptions] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
+
+  // Update liked state when likedByCurrentUser prop changes
+  useEffect(() => {
+    setLiked(likedByCurrentUser);
+  }, [likedByCurrentUser]);
 
   const accentColor = useMemo(() => {
     if (!id) {
@@ -78,42 +86,68 @@ export default function CulturalEntity({
   }, [id]);
 
   const handleLike = async () => {
-    if (liked) return;
+    if (!isAuthenticated) {
+      alert('Please login to like posts.');
+      return;
+    }
+
+    if (liked) {
+      alert('You already liked this post.');
+      return;
+    }
+
     try {
-      await axios.put(API_ROUTES.likeItem(id), {}, { withCredentials: true });
-      setLikes((prev) => (prev ?? 0) + 1);
-      setLiked(true);
-    } catch {
-      // no-op
+      const response = await axios.put(
+        API_ROUTES.likeItem(id),
+        {},
+        { withCredentials: true }
+      );
+      
+      if (response.data.message === 'Already liked') {
+        setLiked(true);
+        alert('You already liked this post.');
+      } else {
+        setLikes((prev) => (prev ?? 0) + 1);
+        setLiked(true);
+      }
+    } catch (error: any) {
+      if (error.response?.data?.message === 'Already liked') {
+        setLiked(true);
+        alert('You already liked this post.');
+      }
     }
   };
 
   const handleAddComment = async () => {
-    if (!commentText.trim()) return;
-    const userId =
-      typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
-    if (!userId) {
-      alert('Please select a user before commenting.');
+    if (!isAuthenticated || !user) {
+      alert('Please login to comment.');
       return;
     }
+
+    if (!commentText.trim()) {
+      return;
+    }
+
     try {
       await axios.post(
         API_ROUTES.addComment(id),
         {
           item_id: id,
-          user_id: userId,
+          user_id: user.id,
           comment: commentText,
         },
         { withCredentials: true }
       );
       setCommentText('');
+      
+      // Refresh comments
       const res = await axios.get<CultureComment[]>(
         API_ROUTES.comments(id),
         { withCredentials: true }
       );
       setComments(Array.isArray(res.data) ? res.data : []);
-    } catch {
-      // no-op
+    } catch (error) {
+      alert('Failed to add comment. Please try again.');
     }
   };
 
@@ -246,32 +280,36 @@ export default function CulturalEntity({
 
       {showComments && (
         <div className="border-t border-gray-700 bg-black/40 px-4 py-3">
-          <div className="mb-2 flex items-center">
+          <div className="mb-2 flex items-center gap-2">
             <input
               type="text"
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
               placeholder="Add a comment..."
-              className="mr-2 w-3/4 rounded border border-gray-600 bg-transparent px-2 py-1 text-white"
+              className="flex-1 rounded border border-gray-600 bg-gray-800 px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
             <button
               type="button"
-              className="rounded bg-orange-500 px-3 py-1 text-white"
+              className="rounded bg-orange-500 px-4 py-2 font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
               onClick={handleAddComment}
+              disabled={!commentText.trim()}
             >
               Post
             </button>
           </div>
-          <div className="max-h-32 overflow-auto">
+          <div className="max-h-64 overflow-auto space-y-2">
             {comments.length === 0 && (
-              <div className="text-xs text-gray-400">No comments yet</div>
+              <div className="text-center py-4 text-sm text-gray-400">
+                No comments yet. Be the first to comment!
+              </div>
             )}
             {comments.map((comment) => (
-              <div key={comment.id} className="mb-1 text-sm text-gray-200">
-                <span className="font-semibold">
-                  {comment.username ?? 'User'}:
-                </span>{' '}
-                {comment.comment}
+              <div key={comment.id} className="rounded bg-gray-800/50 p-2">
+                <span className="font-semibold text-orange-400">
+                  {comment.username ?? 'Anonymous'}
+                </span>
+                <p className="text-sm text-gray-200 mt-1">{comment.comment}</p>
               </div>
             ))}
           </div>

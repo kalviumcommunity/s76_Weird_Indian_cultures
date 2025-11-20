@@ -13,7 +13,7 @@ export const API_ROUTES = {
   updateItem: `/api/items`,
   signup: `/api/auth/signup`,
   login: `/api/auth/login`,
-  logout: `/api/auth/logout`,
+  LOGOUT: `/api/auth/logout`,
 };
 
 export interface UserSummary {
@@ -31,6 +31,7 @@ export interface CultureItem {
   VideoURL?: string | null;
   Likes?: number | null;
   created_by?: string | null;
+  likedByCurrentUser?: boolean;
 }
 
 export interface CultureComment {
