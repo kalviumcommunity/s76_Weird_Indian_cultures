@@ -35,13 +35,25 @@ export async function POST(req: NextRequest) {
     });
     await newUser.save();
 
-    return NextResponse.json(
+    const token = generateToken(buildTokenPayload(newUser));
+
+    const response = NextResponse.json(
       {
         message: 'User created successfully',
         user: { id: newUser._id.toString(), username: newUser.username },
       },
       { status: 201 }
     );
+
+    // Set cookie
+    response.cookies.set('token', token, {
+      httpOnly: true,
+      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+    });
+
+    return response;
   } catch (error) {
     console.error('Signup error:', error);
     return NextResponse.json({ message: 'Server error' }, { status: 500 });

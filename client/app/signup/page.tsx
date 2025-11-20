@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { API_ROUTES } from '@/lib/constants';
 
 export default function SignUpPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,9 +24,13 @@ export default function SignUpPage() {
       });
 
       const result = await response.json();
-      alert(result.message ?? 'Signup attempt completed.');
-      if (response.ok) {
-        router.push('/login');
+
+      if (response.ok && result.user) {
+        login(result.user);
+        alert(result.message ?? 'Signup successful!');
+        router.push('/home');
+      } else {
+        alert(result.message ?? 'Signup failed.');
       }
     } catch (error) {
       console.error(error);
@@ -71,7 +77,7 @@ export default function SignUpPage() {
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-[#FF9933]"
+              className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black focus:outline-none focus:ring-2 focus:ring-[#FF9933]"
               required
             />
           </div>
@@ -88,7 +94,7 @@ export default function SignUpPage() {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-[#FF9933]"
+              className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black focus:outline-none focus:ring-2 focus:ring-[#FF9933]"
               required
             />
           </div>

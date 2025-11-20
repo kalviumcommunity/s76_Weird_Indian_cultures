@@ -100,28 +100,14 @@ export default function LandingPage() {
               ))}
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 1, delay: 0.5 }}
-              className="mb-8"
-            >
-              <motion.img
-                src="/images/737-Photoroom.png"
-                alt="Ashoka Chakra"
-                className="mx-auto h-32 w-32 md:h-40 md:w-40"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-              />
-            </motion.div>
-
+         
             <motion.h1
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, delay: 0.7 }}
               className="mb-6 max-w-5xl text-4xl font-semibold text-white md:text-6xl lg:text-7xl"
             >
-              <span className="bg-gradient-to-r from-orange-500 via-white to-green-500 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r mt-[40px] from-orange-500 via-white to-green-500 bg-clip-text text-transparent">
                 Incredible India
               </span>{' '}
               unfolds through immersive stories, rituals, and journeys.

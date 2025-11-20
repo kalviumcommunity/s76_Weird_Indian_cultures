@@ -7,6 +7,7 @@ import Comment from '@/lib/db/models/Comment';
 import { requireAuth } from '@/lib/auth/middleware';
 import { updateValidationSchema, sanitizeId, validateObjectId } from '@/lib/utils/validation';
 import { handleFileUploads } from '@/lib/utils/file-upload';
+import { deleteItemAssets } from '@/lib/utils/cloudinary-delete';
 
 function formatItem(item: any) {
   return {
@@ -125,6 +126,18 @@ export async function PUT(
 
     const { image, video } = await handleFileUploads(formData);
 
+    // Delete old Cloudinary assets if new ones are uploaded
+    if (image && item.ImageURL) {
+      deleteItemAssets(item.ImageURL, null).catch((err) =>
+        console.error('Failed to delete old image:', err)
+      );
+    }
+    if (video && item.VideoURL) {
+      deleteItemAssets(null, item.VideoURL).catch((err) =>
+        console.error('Failed to delete old video:', err)
+      );
+    }
+
     if (image) item.ImageURL = image;
     if (video) item.VideoURL = video;
 
@@ -167,7 +180,13 @@ export async function DELETE(
       );
     }
 
+    // Delete associated comments
     await Comment.deleteMany({ item: itemId });
+
+    // Delete Cloudinary assets in background (don't await)
+    deleteItemAssets(deletedItem.ImageURL, deletedItem.VideoURL).catch((err) =>
+      console.error('Failed to delete Cloudinary assets:', err)
+    );
 
     return NextResponse.json({ message: 'Item deleted successfully!' });
   } catch (error: any) {
