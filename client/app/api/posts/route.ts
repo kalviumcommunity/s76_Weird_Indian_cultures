@@ -1,60 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db/mongodb';
-import Post from '@/lib/db/models/Post';
-import User from '@/lib/db/models/User';
-import { postValidationSchema, sanitizeId } from '@/lib/utils/validation';
+import PostModel from '@/lib/db/models/PostModel';
+import UserModel from '@/lib/db/models/UserModel';
 import { handleFileUploads } from '@/lib/utils/file-upload';
 import { authenticate } from '@/lib/auth/middleware';
 
 // Format post for response
-function formatPost(post: any, userId?: string, currentUser?: any) {
-  const likedByUser = userId && post.likedBy 
-    ? post.likedBy.some((id: any) => id.toString() === userId)
+async function formatPost(post: any, userId?: string) {
+  const likedByUser = userId 
+    ? await PostModel.isLikedBy(post.id, userId)
     : false;
   
-  const savedByUser = userId && post.savedBy 
-    ? post.savedBy.some((id: any) => id.toString() === userId)
+  const savedByUser = userId 
+    ? await PostModel.isSavedBy(post.id, userId)
     : false;
 
-  const creatorId = post.created_by?._id?.toString() || post.created_by?.toString() || null;
-  const isFollowing = currentUser && creatorId
-    ? currentUser.following.some((id: any) => id.toString() === creatorId)
+  // Get creator info
+  const creator = await UserModel.findById(post.created_by);
+  
+  const isFollowing = userId && creator
+    ? await UserModel.isFollowing(userId, creator.id)
     : false;
 
   return {
-    id: post._id.toString(),
+    id: post.id.toString(),
     caption: post.caption,
     location: post.location,
     tags: post.tags,
-    imageUrl: post.imageUrl,
-    videoUrl: post.videoUrl,
+    imageUrl: post.image_url,
+    videoUrl: post.video_url,
     likes: post.likes ?? 0,
     saves: post.saves ?? 0,
-    created_by: creatorId,
-    creatorUsername: post.created_by?.username || 'User',
+    created_by: post.created_by.toString(),
+    creatorUsername: creator?.username || 'User',
     likedByCurrentUser: likedByUser,
     savedByCurrentUser: savedByUser,
     isFollowingCreator: isFollowing,
-    isOwnPost: userId && creatorId ? userId === creatorId : false,
+    isOwnPost: userId ? userId === post.created_by.toString() : false,
   };
 }
 
 // GET /api/posts - Fetch all posts
 export async function GET(req: NextRequest) {
   try {
-    await connectDB();
-
     // Get current user if authenticated
     let currentUserId: string | undefined;
-    let currentUser: any = null;
     try {
       const user = authenticate(req);
       currentUserId = user?.id;
-      if (currentUserId) {
-        currentUser = await User.findById(currentUserId);
-      }
     } catch {
-      // User not authenticated, continue without user context
+      // User not authenticated
     }
 
     // Check query parameters
@@ -64,22 +58,20 @@ export async function GET(req: NextRequest) {
 
     let posts;
     if (savedOnly && currentUserId) {
-      // Fetch only posts saved by current user
-      posts = await Post.find({ 
-        savedBy: currentUserId 
-      }).populate('created_by', 'username').sort({ createdAt: -1 });
-    } else if (followingOnly && currentUser && currentUser.following.length > 0) {
-      // Fetch posts from followed users only
-      posts = await Post.find({
-        created_by: { $in: currentUser.following }
-      }).populate('created_by', 'username').sort({ createdAt: -1 });
+      posts = await PostModel.findSavedByUser(currentUserId);
+    } else if (followingOnly && currentUserId) {
+      posts = await PostModel.findByFollowing(currentUserId);
     } else {
-      // Fetch all posts (explore)
-      posts = await Post.find().populate('created_by', 'username').sort({ createdAt: -1 });
+      posts = await PostModel.findAll();
     }
 
-    return NextResponse.json(posts.map(post => formatPost(post, currentUserId, currentUser)));
+    const formattedPosts = await Promise.all(
+      posts.map(post => formatPost(post, currentUserId))
+    );
+
+    return NextResponse.json(formattedPosts);
   } catch (error: any) {
+    console.error('Posts fetch error:', error);
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }
@@ -87,26 +79,21 @@ export async function GET(req: NextRequest) {
 // POST /api/posts - Create new post
 export async function POST(req: NextRequest) {
   try {
-    await connectDB();
-
     const formData = await req.formData();
 
-    const payload = {
-      caption: formData.get('caption') as string,
-      location: formData.get('location') as string || '',
-      tags: formData.get('tags') as string || '',
-      created_by: sanitizeId(formData.get('created_by') as string),
-    };
+    const caption = formData.get('caption') as string;
+    const location = formData.get('location') as string || '';
+    const tags = formData.get('tags') as string || '';
+    const created_by = formData.get('created_by') as string;
 
-    const { error, value } = postValidationSchema.validate(payload);
-    if (error) {
+    if (!caption || !created_by) {
       return NextResponse.json(
-        { message: error.details[0].message },
+        { message: 'Caption and creator are required' },
         { status: 400 }
       );
     }
 
-    const creator = await User.findById(value.created_by);
+    const creator = await UserModel.findById(created_by);
     if (!creator) {
       return NextResponse.json(
         { message: 'Invalid user ID' },
@@ -116,16 +103,21 @@ export async function POST(req: NextRequest) {
 
     const { image, video } = await handleFileUploads(formData);
 
-    const post = await Post.create({
-      ...value,
-      imageUrl: image,
-      videoUrl: video,
+    const post = await PostModel.create({
+      caption,
+      location,
+      tags,
+      created_by: parseInt(created_by),
+      image_url: image,
+      video_url: video,
     });
+
+    const formattedPost = await formatPost(post, created_by);
 
     return NextResponse.json(
       {
         message: 'Post created successfully!',
-        post: formatPost(post),
+        post: formattedPost,
       },
       { status: 201 }
     );
@@ -141,33 +133,34 @@ export async function POST(req: NextRequest) {
 // PUT /api/posts - Update post
 export async function PUT(req: NextRequest) {
   try {
-    await connectDB();
-
     const formData = await req.formData();
-    const postId = sanitizeId(formData.get('_id') as string);
+    const postId = formData.get('_id') as string;
 
-    const payload = {
-      caption: formData.get('caption') as string,
-      location: formData.get('location') as string || '',
-      tags: formData.get('tags') as string || '',
-      created_by: sanitizeId(formData.get('created_by') as string),
-    };
-
-    const { error, value } = postValidationSchema.validate(payload);
-    if (error) {
+    if (!postId) {
       return NextResponse.json(
-        { message: error.details[0].message },
+        { message: 'Post ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const caption = formData.get('caption') as string;
+    const location = formData.get('location') as string || '';
+    const tags = formData.get('tags') as string || '';
+
+    if (!caption) {
+      return NextResponse.json(
+        { message: 'Caption is required' },
         { status: 400 }
       );
     }
 
     const { image, video } = await handleFileUploads(formData);
 
-    const updateData: any = { ...value };
-    if (image) updateData.imageUrl = image;
-    if (video) updateData.videoUrl = video;
+    const updateData: any = { caption, location, tags };
+    if (image) updateData.image_url = image;
+    if (video) updateData.video_url = video;
 
-    const post = await Post.findByIdAndUpdate(postId, updateData, { new: true });
+    const post = await PostModel.update(postId, updateData);
 
     if (!post) {
       return NextResponse.json(
@@ -176,10 +169,12 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    const formattedPost = await formatPost(post);
+
     return NextResponse.json(
       {
         message: 'Post updated successfully!',
-        post: formatPost(post),
+        post: formattedPost,
       },
       { status: 200 }
     );
