@@ -11,15 +11,14 @@ export const objectIdValidator = Joi.string()
   }, 'ObjectId validation')
   .messages({ 'any.invalid': 'Invalid ID format' });
 
-export const itemValidationSchema = Joi.object({
-  CultureName: Joi.string().min(3).max(100).required(),
-  CultureDescription: Joi.string().min(10).max(500).required(),
-  Region: Joi.string().min(3).max(100).required(),
-  Significance: Joi.string().min(10).max(500).required(),
+export const postValidationSchema = Joi.object({
+  caption: Joi.string().min(1).max(2200).required(),
+  location: Joi.string().max(100).allow('').optional(),
+  tags: Joi.string().max(200).allow('').optional(),
   created_by: objectIdValidator.required(),
 });
 
-export const updateValidationSchema = itemValidationSchema.fork(
+export const updateValidationSchema = postValidationSchema.fork(
   'created_by',
   (schema) => schema.optional()
 );

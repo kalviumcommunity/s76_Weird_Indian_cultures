@@ -1,11 +1,5 @@
-import React from 'react'
-import Landing from '@/components/Landing'
-const page = () => {
-  return (
-    <div>
-         <Landing/>
-    </div>
-  )
-}
+import { redirect } from 'next/navigation';
 
-export default page
+export default function RootPage() {
+  redirect('/login');
+}

@@ -43,10 +43,20 @@ export async function handleFileUploads(
 ): Promise<{ image: string | null; video: string | null }> {
   const imageFile = formData.get('image') as File | null;
   const videoFile = formData.get('video') as File | null;
+  const profilePicFile = formData.get('profilePic') as File | null;
 
   let imageURL = null;
   let videoURL = null;
 
+  // Handle profile picture
+  if (profilePicFile && profilePicFile.size > 0) {
+    if (!validateFileType(profilePicFile)) {
+      throw new Error('Invalid profile picture file type');
+    }
+    imageURL = await uploadToCloudinary(profilePicFile, 'image');
+  }
+
+  // Handle regular image
   if (imageFile && imageFile.size > 0) {
     if (!validateFileType(imageFile)) {
       throw new Error('Invalid image file type');

@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import axios from 'axios';
 import {
-  FaBookmark,
   FaComment,
   FaEllipsisH,
   FaShare,
-  FaThumbsUp,
+  FaHeart,
+  FaRegHeart,
+  FaRegBookmark,
 } from 'react-icons/fa';
+import { BsBookmarkFill } from 'react-icons/bs';
 import {
   API_BASE_URL,
   API_ROUTES,
@@ -33,30 +35,112 @@ const colorOptions = [
 
 export default function CulturalEntity({
   id,
+  caption,
+  location,
+  tags,
+  imageUrl,
+  videoUrl,
+  likes = 0,
+  saves = 0,
+  likedByCurrentUser = false,
+  savedByCurrentUser = false,
+  created_by,
+  creatorUsername,
+  isFollowingCreator = false,
+  isOwnPost = false,
+  onDelete,
+  // Legacy support
   CultureName,
   CultureDescription,
   Region,
   Significance,
   ImageURL,
   VideoURL,
-  Likes = 0,
-  likedByCurrentUser = false,
-  onDelete,
+  Likes,
 }: Props) {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
+  
+  // Use new fields, fallback to legacy fields
+  const displayCaption = caption || CultureName || '';
+  const displayLocation = location || Region || '';
+  const displayImage = imageUrl || ImageURL;
+  const displayVideo = videoUrl || VideoURL;
+  const displayLikes = likes || Likes || 0;
+  const displayUsername = creatorUsername || displayLocation || 'User';
+  
   const [liked, setLiked] = useState(likedByCurrentUser);
-  const [likes, setLikes] = useState(Likes);
-  const [saved, setSaved] = useState(false);
+  const [likeCount, setLikeCount] = useState(displayLikes);
+  const [saved, setSaved] = useState(savedByCurrentUser);
+  const [saveCount, setSaveCount] = useState(saves);
   const [comments, setComments] = useState<CultureComment[]>([]);
+  const [commentCount, setCommentCount] = useState(0);
   const [showOptions, setShowOptions] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
+  const [isFollowing, setIsFollowing] = useState(isFollowingCreator);
+  const [showUnfollowModal, setShowUnfollowModal] = useState(false);
 
   // Update liked state when likedByCurrentUser prop changes
   useEffect(() => {
     setLiked(likedByCurrentUser);
   }, [likedByCurrentUser]);
+
+  // Update saved state when savedByCurrentUser prop changes
+  useEffect(() => {
+    setSaved(savedByCurrentUser);
+  }, [savedByCurrentUser]);
+
+  // Update following state when prop changes
+  useEffect(() => {
+    setIsFollowing(isFollowingCreator);
+  }, [isFollowingCreator]);
+
+  const handleFollowToggle = async () => {
+    if (!isAuthenticated || !created_by) {
+      alert('Please login to follow users.');
+      return;
+    }
+
+    if (isFollowing) {
+      setShowUnfollowModal(true);
+      return;
+    }
+
+    // Follow
+    const previousState = isFollowing;
+    setIsFollowing(true);
+
+    try {
+      const response = await axios.put(
+        API_ROUTES.followUser(created_by),
+        {},
+        { withCredentials: true }
+      );
+      setIsFollowing(response.data.isFollowing);
+    } catch (error) {
+      setIsFollowing(previousState);
+      alert('Failed to follow user.');
+    }
+  };
+
+  const handleUnfollow = async () => {
+    const previousState = isFollowing;
+    setIsFollowing(false);
+    setShowUnfollowModal(false);
+
+    try {
+      const response = await axios.put(
+        API_ROUTES.followUser(created_by!),
+        {},
+        { withCredentials: true }
+      );
+      setIsFollowing(response.data.isFollowing);
+    } catch (error) {
+      setIsFollowing(previousState);
+      alert('Failed to unfollow user.');
+    }
+  };
 
   const accentColor = useMemo(() => {
     if (!id) {
@@ -72,13 +156,24 @@ export default function CulturalEntity({
   useEffect(() => {
     const fetchComments = async () => {
       try {
-        const res = await axios.get<CultureComment[]>(
+        const res = await axios.get(
           API_ROUTES.comments(id),
           { withCredentials: true }
         );
-        setComments(Array.isArray(res.data) ? res.data : []);
+        if (res.data.comments && Array.isArray(res.data.comments)) {
+          setComments(res.data.comments);
+          setCommentCount(res.data.count || res.data.comments.length);
+        } else if (Array.isArray(res.data)) {
+          // Fallback for old API format
+          setComments(res.data);
+          setCommentCount(res.data.length);
+        } else {
+          setComments([]);
+          setCommentCount(0);
+        }
       } catch {
         setComments([]);
+        setCommentCount(0);
       }
     };
 
@@ -91,30 +186,63 @@ export default function CulturalEntity({
       return;
     }
 
-    if (liked) {
-      alert('You already liked this post.');
-      return;
-    }
+    // Optimistic update
+    const newLikedState = !liked;
+    const previousLiked = liked;
+    const previousCount = likeCount;
+    
+    setLiked(newLikedState);
+    setLikeCount((prev: number) => newLikedState ? (prev ?? 0) + 1 : Math.max((prev ?? 1) - 1, 0));
 
     try {
       const response = await axios.put(
-        API_ROUTES.likeItem(id),
+        API_ROUTES.likePost(id),
         {},
         { withCredentials: true }
       );
       
-      if (response.data.message === 'Already liked') {
-        setLiked(true);
-        alert('You already liked this post.');
-      } else {
-        setLikes((prev) => (prev ?? 0) + 1);
-        setLiked(true);
+      // Sync with server response
+      if (response.data.likes !== undefined) {
+        setLikeCount(response.data.likes);
       }
     } catch (error: any) {
-      if (error.response?.data?.message === 'Already liked') {
-        setLiked(true);
-        alert('You already liked this post.');
+      // Revert on error
+      setLiked(previousLiked);
+      setLikeCount(previousCount);
+      alert('Failed to update like. Please try again.');
+    }
+  };
+
+  const handleSave = async () => {
+    if (!isAuthenticated) {
+      alert('Please login to save posts.');
+      return;
+    }
+
+    // Optimistic update
+    const newSavedState = !saved;
+    const previousSaved = saved;
+    const previousSaveCount = saveCount;
+    
+    setSaved(newSavedState);
+    setSaveCount((prev) => newSavedState ? (prev ?? 0) + 1 : Math.max((prev ?? 1) - 1, 0));
+
+    try {
+      const response = await axios.put(
+        API_ROUTES.savePost(id),
+        {},
+        { withCredentials: true }
+      );
+      
+      // Sync with server response
+      if (response.data.saves !== undefined) {
+        setSaveCount(response.data.saves);
       }
+    } catch (error: any) {
+      // Revert on error
+      setSaved(previousSaved);
+      setSaveCount(previousSaveCount);
+      alert('Failed to update save. Please try again.');
     }
   };
 
@@ -140,13 +268,20 @@ export default function CulturalEntity({
       );
       setCommentText('');
       
-      // Refresh comments
-      const res = await axios.get<CultureComment[]>(
+      // Refresh comments with backend response
+      const res = await axios.get(
         API_ROUTES.comments(id),
         { withCredentials: true }
       );
-      setComments(Array.isArray(res.data) ? res.data : []);
+      if (res.data.comments && Array.isArray(res.data.comments)) {
+        setComments(res.data.comments);
+        setCommentCount(res.data.count || res.data.comments.length);
+      } else if (Array.isArray(res.data)) {
+        setComments(res.data);
+        setCommentCount(res.data.length);
+      }
     } catch (error) {
+      console.error('Comment error:', error);
       alert('Failed to add comment. Please try again.');
     }
   };
@@ -158,160 +293,184 @@ export default function CulturalEntity({
   };
 
   return (
-    <div className="mb-4 overflow-hidden rounded-lg border border-gray-700 bg-black/30 backdrop-blur-md shadow-lg transition-all hover:shadow-xl">
-      <div className={`h-2 ${accentColor}`} />
-
-      <div className="flex items-center justify-between px-4 pt-4">
-        <div className="flex items-center">
-          <div
-            className={`flex h-10 w-10 items-center justify-center rounded-full text-white ${accentColor}`}
-          >
-            {CultureName.charAt(0).toUpperCase()}
+    <div className="bg-white border border-gray-300 rounded-sm mb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className={`flex h-9 w-9 items-center justify-center rounded-full text-white font-bold text-sm ${accentColor}`}>
+            {displayUsername.charAt(0).toUpperCase()}
           </div>
-          <div className="ml-3">
-            <h3 className="font-semibold text-white">{Region}</h3>
-            <p className="text-xs text-gray-400">
-              Posted {Math.floor(Math.random() * 7) + 1}d ago
-            </p>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-sm text-gray-900">{displayUsername}</span>
+            {!isOwnPost && isAuthenticated && created_by && (
+              <>
+                <span className="text-gray-400">•</span>
+                <button
+                  onClick={handleFollowToggle}
+                  className={`text-xs font-semibold ${
+                    isFollowing
+                      ? 'text-gray-900'
+                      : 'text-blue-500 hover:text-blue-700'
+                  }`}
+                >
+                  {isFollowing ? 'Following' : 'Follow'}
+                </button>
+              </>
+            )}
           </div>
         </div>
-        <div className="relative">
-          <button
-            type="button"
-            className="text-gray-400 hover:text-white"
-            onClick={() => setShowOptions((prev) => !prev)}
-          >
-            <FaEllipsisH />
-          </button>
-          {showOptions && (
-            <div className="absolute right-0 mt-1 w-36 rounded-md border border-gray-700 bg-gray-900 py-2 shadow-lg">
-              <button
-                type="button"
-                onClick={() => router.push(`/form/${id}`)}
-                className="block w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={() => onDelete(id)}
-                className="block w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-gray-800"
-              >
-                Delete
-              </button>
-            </div>
+        <button type="button" onClick={() => setShowOptions(!showOptions)} className="text-gray-900">
+          <FaEllipsisH />
+        </button>
+        {showOptions && (
+          <div className="absolute right-4 mt-32 w-32 bg-white border border-gray-300 rounded-md shadow-lg z-10">
+            <button onClick={() => router.push(`/form/${id}`)} className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100">Edit</button>
+            <button onClick={() => onDelete(id)} className="block w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-gray-100">Delete</button>
+          </div>
+        )}
+      </div>
+
+      {/* Media */}
+      {displayImage && (
+        <div className="relative w-full" style={{ aspectRatio: '1/1' }}>
+          <Image src={assetUrl(displayImage) || '/images/photo-1585607344893-43a4bd91169a.png'} alt={displayCaption} fill className="object-cover" sizes="100vw" />
+        </div>
+      )}
+      {displayVideo && <video src={assetUrl(displayVideo) || undefined} controls className="w-full" style={{ maxHeight: '600px' }} />}
+
+      {/* Actions */}
+      <div className="px-4 py-3 flex items-center gap-4">
+        <button 
+          onClick={handleLike} 
+          className="hover:opacity-60 transition-all active:scale-90"
+          title={liked ? 'Liked' : 'Like'}
+        >
+          {liked ? (
+            <FaHeart className="text-red-500 text-[26px]" />
+          ) : (
+            <FaRegHeart className="text-gray-900 text-[26px]" />
           )}
-        </div>
+        </button>
+        <button 
+          onClick={() => setShowComments(!showComments)} 
+          className="hover:opacity-60 transition-all active:scale-90"
+          title="Comment"
+        >
+          <FaComment className="text-gray-900 text-[26px]" />
+        </button>
+        <button 
+          className="hover:opacity-60 transition-all active:scale-90"
+          title="Share"
+        >
+          <FaShare className="text-gray-900 text-[26px]" />
+        </button>
+        <button 
+          onClick={handleSave} 
+          className="ml-auto hover:opacity-60 transition-all active:scale-90"
+          title={saved ? 'Unsave' : 'Save'}
+        >
+          {saved ? (
+            <BsBookmarkFill className="text-gray-900 text-[26px]" />
+          ) : (
+            <FaRegBookmark className="text-gray-900 text-[26px]" />
+          )}
+        </button>
       </div>
 
-      <div className="px-4 py-3">
-        {ImageURL && (
-          <div className="relative mb-2 h-48 w-full overflow-hidden rounded-lg">
-            <Image
-              src={assetUrl(ImageURL) ?? '/images/photo-1585607344893-43a4bd91169a.png'}
-              alt={CultureName}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            />
-          </div>
+      {/* Likes */}
+      <div className="px-4 pb-2">
+        <button className="font-semibold text-sm text-gray-900 hover:text-gray-600">
+          {likeCount === 1 ? '1 like' : `${likeCount} likes`}
+        </button>
+      </div>
+
+      {/* Caption */}
+      <div className="px-4 pb-2">
+        <p className="text-sm">
+          <span className="font-semibold mr-2">{displayLocation || 'User'}</span>
+          {displayCaption}
+        </p>
+        {(CultureDescription || Significance) && (
+          <p className="text-sm text-gray-600 mt-1">
+            {CultureDescription || Significance}
+          </p>
         )}
-        {VideoURL && (
-          <video
-            src={assetUrl(VideoURL) ?? undefined}
-            controls
-            className="mb-2 h-48 w-full rounded-lg object-cover"
-          />
-        )}
-        <h2 className="mb-2 text-xl font-bold text-orange-400">
-          {CultureName}
-        </h2>
-        <p className="mb-3 text-sm text-gray-300">{CultureDescription}</p>
-        <div className="text-sm text-gray-300">
-          <span className="font-semibold text-orange-400">Significance:</span>{' '}
-          {Significance}
-        </div>
       </div>
 
-      <div className="border-t border-gray-700 bg-gray-900/50 px-4 py-2">
-        <div className="flex items-center gap-4 text-sm text-gray-400">
-          <span>{likes} likes</span>
-          <span>{comments.length} comments</span>
-        </div>
-      </div>
-
-      <div className="flex justify-between border-t border-gray-700 px-4 py-2">
-        <button
-          type="button"
-          className={`flex items-center gap-1 rounded-full px-3 py-1 ${
-            liked
-              ? 'text-orange-400'
-              : 'text-gray-400 hover:text-orange-400'
-          }`}
-          onClick={handleLike}
+      {/* Comments */}
+      {commentCount > 0 && !showComments && (
+        <button 
+          onClick={() => setShowComments(true)} 
+          className="px-4 pb-2 text-sm text-gray-500 hover:text-gray-700"
         >
-          <FaThumbsUp /> <span>Like</span>
+          View all {commentCount} {commentCount === 1 ? 'comment' : 'comments'}
         </button>
-        <button
-          type="button"
-          className="flex items-center gap-1 rounded-full px-3 py-1 text-gray-400 hover:text-orange-400"
-          onClick={() => setShowComments((prev) => !prev)}
-        >
-          <FaComment /> <span>Comment</span>
-        </button>
-        <button
-          type="button"
-          className="flex items-center gap-1 rounded-full px-3 py-1 text-gray-400 hover:text-orange-400"
-        >
-          <FaShare /> <span>Share</span>
-        </button>
-        <button
-          type="button"
-          className={`flex items-center gap-1 rounded-full px-3 py-1 ${
-            saved
-              ? 'text-orange-400'
-              : 'text-gray-400 hover:text-orange-400'
-          }`}
-          onClick={() => setSaved((prev) => !prev)}
-        >
-          <FaBookmark />
-        </button>
-      </div>
+      )}
 
       {showComments && (
-        <div className="border-t border-gray-700 bg-black/40 px-4 py-3">
-          <div className="mb-2 flex items-center gap-2">
+        <div className="px-4 pb-3">
+          <div className="space-y-3 mb-3 max-h-60 overflow-y-auto">
+            {comments.map((comment) => (
+              <div key={comment.id} className="flex gap-3">
+                <div className="flex-shrink-0">
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white font-bold text-xs">
+                    {(comment.username || 'U').charAt(0).toUpperCase()}
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm">
+                    <span className="font-semibold mr-2 text-gray-900">{comment.username || 'User'}</span>
+                    <span className="text-gray-900">{comment.comment}</span>
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-3 border-t border-gray-200 pt-4 items-center">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-orange-400 to-pink-400 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+              {user?.username?.charAt(0).toUpperCase() || 'U'}
+            </div>
             <input
               type="text"
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
               placeholder="Add a comment..."
-              className="flex-1 rounded border border-gray-600 bg-gray-800 px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="flex-1 text-sm outline-none text-gray-900 placeholder-gray-400"
             />
-            <button
-              type="button"
-              className="rounded bg-orange-500 px-4 py-2 font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
-              onClick={handleAddComment}
-              disabled={!commentText.trim()}
+            <button 
+              onClick={handleAddComment} 
+              disabled={!commentText.trim()} 
+              className="text-blue-500 font-semibold text-sm disabled:opacity-30 hover:text-blue-700"
             >
               Post
             </button>
           </div>
-          <div className="max-h-64 overflow-auto space-y-2">
-            {comments.length === 0 && (
-              <div className="text-center py-4 text-sm text-gray-400">
-                No comments yet. Be the first to comment!
+        </div>
+      )}
+
+      {/* Unfollow Confirmation Modal */}
+      {showUnfollowModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowUnfollowModal(false)}>
+          <div className="bg-white rounded-lg w-96 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="p-8 text-center border-b border-gray-300">
+              <div className={`flex h-20 w-20 mx-auto mb-4 items-center justify-center rounded-full text-white font-bold text-2xl ${accentColor}`}>
+                {displayUsername.charAt(0).toUpperCase()}
               </div>
-            )}
-            {comments.map((comment) => (
-              <div key={comment.id} className="rounded bg-gray-800/50 p-2">
-                <span className="font-semibold text-orange-400">
-                  {comment.username ?? 'Anonymous'}
-                </span>
-                <p className="text-sm text-gray-200 mt-1">{comment.comment}</p>
-              </div>
-            ))}
+              <p className="text-sm text-gray-900">Unfollow @{displayUsername}?</p>
+            </div>
+            <button
+              onClick={handleUnfollow}
+              className="w-full py-3 text-sm font-bold text-red-500 hover:bg-gray-50 border-b border-gray-300"
+            >
+              Unfollow
+            </button>
+            <button
+              onClick={() => setShowUnfollowModal(false)}
+              className="w-full py-3 text-sm hover:bg-gray-50"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
