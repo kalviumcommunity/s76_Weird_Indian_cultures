@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db/mongodb';
-import User from '@/lib/db/models/User';
+import UserModel from '@/lib/db/models/UserModel';
+import PostModel from '@/lib/db/models/PostModel';
 import { authenticate } from '@/lib/auth/middleware';
 import { handleFileUploads } from '@/lib/utils/file-upload';
 
@@ -9,34 +9,33 @@ export async function GET(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    await connectDB();
-
     const { userId } = await params;
-    const user = await User.findById(userId).select('username bio profilePic following followers');
+    const user = await UserModel.findById(userId);
 
     if (!user) {
       return NextResponse.json({ message: 'User not found' }, { status: 404 });
     }
 
     // Get user's posts
-    const Post = (await import('@/lib/db/models/Post')).default;
-    const posts = await Post.find({ created_by: userId })
-      .select('imageUrl videoUrl likes saves')
-      .sort({ createdAt: -1 });
+    const posts = await PostModel.findByUserId(userId);
+    
+    // Get followers and following
+    const following = await UserModel.getFollowing(userId);
+    const followers = await UserModel.getFollowers(userId);
 
     return NextResponse.json({
-      id: user._id.toString(),
+      id: user.id.toString(),
       username: user.username,
       bio: user.bio || '',
-      profilePic: user.profilePic || null,
-      followersCount: user.followers?.length || 0,
-      followingCount: user.following?.length || 0,
-      following: user.following || [],
-      followers: user.followers || [],
+      profilePic: user.profile_pic || null,
+      followersCount: followers.length,
+      followingCount: following.length,
+      following,
+      followers,
       posts: posts.map(post => ({
-        id: post._id.toString(),
-        imageUrl: post.imageUrl,
-        videoUrl: post.videoUrl,
+        id: post.id.toString(),
+        imageUrl: post.image_url,
+        videoUrl: post.video_url,
         likes: post.likes || 0,
         saves: post.saves || 0,
       })),
@@ -51,8 +50,6 @@ export async function PUT(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    await connectDB();
-
     // Authenticate user
     const authUser = authenticate(req);
     if (!authUser) {
@@ -82,11 +79,10 @@ export async function PUT(
     // Handle profile picture upload
     const { image } = await handleFileUploads(formData);
     if (image) {
-      updateData.profilePic = image;
+      updateData.profile_pic = image;
     }
 
-    const user = await User.findByIdAndUpdate(userId, updateData, { new: true })
-      .select('username bio profilePic');
+    const user = await UserModel.update(userId, updateData);
 
     if (!user) {
       return NextResponse.json({ message: 'User not found' }, { status: 404 });
@@ -95,10 +91,10 @@ export async function PUT(
     return NextResponse.json({
       message: 'Profile updated successfully',
       user: {
-        id: user._id.toString(),
+        id: user.id.toString(),
         username: user.username,
         bio: user.bio,
-        profilePic: user.profilePic,
+        profilePic: user.profile_pic,
       },
     });
   } catch (error: any) {

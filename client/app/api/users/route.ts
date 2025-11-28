@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db/mongodb';
-import User from '@/lib/db/models/User';
+import UserModel from '@/lib/db/models/UserModel';
 import { authenticate } from '@/lib/auth/middleware';
 
 export async function GET(req: NextRequest) {
   try {
-    await connectDB();
-
     let currentUserId: string | undefined;
     try {
       const user = authenticate(req);
@@ -15,28 +12,23 @@ export async function GET(req: NextRequest) {
       // User not authenticated
     }
 
-    const allUsers = await User.find()
-      .select('username')
-      .sort({ username: 1 });
+    const allUsers = await UserModel.findAll();
 
-    let currentUser = null;
-    if (currentUserId) {
-      currentUser = await User.findById(currentUserId).select('following');
-    }
-
-    return NextResponse.json(
-      allUsers.map((user) => {
-        const isFollowing = currentUser
-          ? currentUser.following.some((id: any) => id.toString() === user._id.toString())
+    const usersWithFollowStatus = await Promise.all(
+      allUsers.map(async (user) => {
+        const isFollowing = currentUserId
+          ? await UserModel.isFollowing(currentUserId, user.id)
           : false;
         
         return {
-          id: user._id.toString(),
+          id: user.id.toString(),
           username: user.username,
           isFollowing,
         };
       })
     );
+
+    return NextResponse.json(usersWithFollowStatus);
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }

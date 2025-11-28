@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db/mongodb';
-import User from '@/lib/db/models/User';
+import UserModel from '@/lib/db/models/UserModel';
 import { buildTokenPayload, generateToken } from '@/lib/auth/jwt';
 
 export async function POST(req: NextRequest) {
   try {
-    await connectDB();
-
     const body = await req.json();
     const { username, email, password } = body;
 
@@ -20,7 +17,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const existingUser = await User.findOne({ email: normalizedEmail });
+    const existingUser = await UserModel.findByEmail(normalizedEmail);
     if (existingUser) {
       return NextResponse.json(
         { message: 'Email already in use' },
@@ -28,19 +25,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const newUser = new User({
-      username,
-      email: normalizedEmail,
-      password,
-    });
-    await newUser.save();
+    const newUser = await UserModel.create(username, normalizedEmail, password);
 
-    const token = generateToken(buildTokenPayload(newUser));
+    const token = generateToken({
+      id: newUser.id.toString(),
+      username: newUser.username,
+      email: newUser.email,
+    });
 
     const response = NextResponse.json(
       {
         message: 'User created successfully',
-        user: { id: newUser._id.toString(), username: newUser.username },
+        user: { id: newUser.id.toString(), username: newUser.username },
       },
       { status: 201 }
     );
