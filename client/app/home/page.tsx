@@ -9,7 +9,7 @@ import {
   FaUser,
   FaVideo,
 } from 'react-icons/fa';
-import Navbar from '@/components/Navbar';
+import Sidebar from '@/components/Navbar';
 import CulturalEntity from '@/components/CulturalEntity';
 import {
   API_ROUTES,
@@ -46,8 +46,8 @@ export default function HomePage() {
     try {
       const url =
         userId && userId.length > 0
-          ? API_ROUTES.itemsByUser(userId)
-          : API_ROUTES.fetchItems;
+          ? API_ROUTES.postsByUser(userId)
+          : API_ROUTES.fetchPosts;
       const res = await axios.get<CultureItem[]>(url);
       setCultures(Array.isArray(res.data) ? res.data : []);
     } catch {
@@ -67,7 +67,7 @@ export default function HomePage() {
 
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(API_ROUTES.deleteItem(id), { withCredentials: true });
+      await axios.delete(API_ROUTES.deletePost(id), { withCredentials: true });
       setCultures((prev) => prev.filter((culture) => culture.id !== id));
       alert('Entry deleted successfully!');
     } catch {
@@ -77,122 +77,52 @@ export default function HomePage() {
 
   const filteredCultures = useMemo(() => {
     if (contentType === 'videos') {
-      return cultures.filter((item) => Boolean(item.VideoURL));
+      return cultures.filter((item) => Boolean(item.videoUrl || item.VideoURL));
     }
     if (contentType === 'images') {
       return cultures.filter(
-        (item) => Boolean(item.ImageURL) && !item.VideoURL
+        (item) => Boolean(item.imageUrl || item.ImageURL) && !(item.videoUrl || item.VideoURL)
       );
     }
     return cultures;
   }, [contentType, cultures]);
 
   return (
-    <div
-      className="relative min-h-screen bg-cover bg-fixed"
-      style={{ backgroundImage: "url('/images/indianbg.jpg')" }}
-    >
-      <div
-        className="absolute inset-0"
-        style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
-      />
-      <Navbar />
+    <div className="min-h-screen bg-white">
+      <Sidebar />
 
-      <div className="relative z-10 mx-auto max-w-6xl px-4 pt-24">
-        <div className="mb-6 rounded-lg border border-gray-700 bg-black/30 backdrop-blur-md shadow-lg">
-          <div className="flex border-b border-gray-700">
-            <button
-              type="button"
-              className={`flex items-center gap-2 px-6 py-3 font-medium ${
-                contentType === 'all'
-                  ? 'border-b-2 border-orange-400 text-orange-400'
-                  : 'text-gray-300 hover:text-orange-400'
-              }`}
-              onClick={() => setContentType('all')}
-            >
-              <FaArchway /> All
-            </button>
-            <button
-              type="button"
-              className={`flex items-center gap-2 px-6 py-3 font-medium ${
-                contentType === 'videos'
-                  ? 'border-b-2 border-orange-400 text-orange-400'
-                  : 'text-gray-300 hover:text-orange-400'
-              }`}
-              onClick={() => setContentType('videos')}
-            >
-              <FaVideo /> Videos
-            </button>
-            <button
-              type="button"
-              className={`flex items-center gap-2 px-6 py-3 font-medium ${
-                contentType === 'images'
-                  ? 'border-b-2 border-orange-400 text-orange-400'
-                  : 'text-gray-300 hover:text-orange-400'
-              }`}
-              onClick={() => setContentType('images')}
-            >
-              <FaImage /> Images
-            </button>
-          </div>
-        </div>
-
-        <div className="mb-6 rounded-lg border border-gray-700 bg-black/30 backdrop-blur-md shadow-lg">
-          <div className="flex flex-row space-x-4 overflow-x-auto p-4">
-            <div
-              role="button"
-              tabIndex={0}
-              className={`flex cursor-pointer flex-col items-center ${
-                selectedUser === ''
-                  ? 'opacity-100'
-                  : 'opacity-60 hover:opacity-100'
-              }`}
-              onClick={() => handleUserSelect('')}
-              onKeyDown={(e) => e.key === 'Enter' && handleUserSelect('')}
-            >
-              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 p-0.5">
-                <div className="flex h-full w-full items-center justify-center rounded-full border-2 border-black bg-gray-800 text-white">
-                  <FaUser size={24} />
-                </div>
-              </div>
-              <span className="mt-1 text-xs text-gray-300">All Users</span>
-            </div>
-
-            {users.map((user) => (
-              <div
-                key={user.id}
-                role="button"
-                tabIndex={0}
-                className={`flex cursor-pointer flex-col items-center ${
-                  selectedUser === user.id
-                    ? 'opacity-100'
-                    : 'opacity-60 hover:opacity-100'
-                }`}
-                onClick={() => handleUserSelect(user.id)}
-                onKeyDown={(e) =>
-                  e.key === 'Enter' && handleUserSelect(user.id)
-                }
-              >
-                <div className="h-16 w-16 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 p-0.5">
-                  <div className="flex h-full w-full items-center justify-center rounded-full border-2 border-black bg-gray-800 text-white text-lg">
-                    {user.username ? user.username.charAt(0).toUpperCase() : 'U'}
+      <div className="flex md:ml-64">
+        {/* Main Feed - Center */}
+        <div className="flex-1 max-w-2xl mx-auto px-4 py-6 pb-20 md:pb-6">
+          {/* Stories Section */}
+          <div className="mb-6 overflow-x-auto">
+            <div className="flex gap-4 pb-4">
+              {users.slice(0, 10).map((user) => (
+                <div
+                  key={user.id}
+                  className="flex flex-col items-center cursor-pointer"
+                  onClick={() => handleUserSelect(user.id)}
+                >
+                  <div className="h-16 w-16 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 p-0.5">
+                    <div className="flex h-full w-full items-center justify-center rounded-full border-2 border-white bg-gray-300 text-gray-700 text-lg font-bold">
+                      {user.username?.charAt(0).toUpperCase() || 'U'}
+                    </div>
                   </div>
+                  <span className="mt-1 text-xs text-gray-800 truncate max-w-[64px]">
+                    {user.username}
+                  </span>
                 </div>
-                <span className="mt-1 text-xs text-gray-300">
-                  {user.username}
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className="relative">
+          {/* Posts Feed */}
           {loading ? (
             <div className="flex justify-center py-10">
               <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-orange-500" />
             </div>
           ) : filteredCultures.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <div className="space-y-6">
               {filteredCultures.map((culture) => (
                 <CulturalEntity
                   key={culture.id}
@@ -202,34 +132,42 @@ export default function HomePage() {
               ))}
             </div>
           ) : (
-            <div className="col-span-full rounded-lg border border-gray-700 bg-black/30 p-6 text-center text-white backdrop-blur-md">
-              No cultural posts found.
+            <div className="rounded-lg border border-gray-300 bg-white p-6 text-center text-gray-500">
+              No posts found.
             </div>
           )}
         </div>
-      </div>
 
-      <div className="fixed bottom-8 right-8">
-        <button
-          type="button"
-          onClick={() => router.push('/form')}
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-orange-500 text-white shadow-lg transition-transform hover:scale-110 hover:bg-orange-600"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-8 w-8"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-        </button>
+        {/* Right Sidebar - Suggestions */}
+        <div className="hidden xl:block w-80 px-4 py-6">
+          <div className="fixed w-72">
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold text-gray-500 mb-3">
+                Suggestions For You
+              </h3>
+              <div className="space-y-3">
+                {users.slice(0, 5).map((user) => (
+                  <div key={user.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-400 to-pink-400 flex items-center justify-center text-white font-bold">
+                        {user.username?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {user.username}
+                        </p>
+                        <p className="text-xs text-gray-500">Bio here ...</p>
+                      </div>
+                    </div>
+                    <button className="text-xs font-semibold text-blue-500 hover:text-blue-700">
+                      Follow
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

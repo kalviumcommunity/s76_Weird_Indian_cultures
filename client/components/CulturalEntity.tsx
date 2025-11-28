@@ -9,7 +9,8 @@ import {
   FaComment,
   FaEllipsisH,
   FaShare,
-  FaThumbsUp,
+  FaHeart,
+  FaRegHeart,
 } from 'react-icons/fa';
 import {
   API_BASE_URL,
@@ -33,20 +34,35 @@ const colorOptions = [
 
 export default function CulturalEntity({
   id,
+  caption,
+  location,
+  tags,
+  imageUrl,
+  videoUrl,
+  likes = 0,
+  likedByCurrentUser = false,
+  onDelete,
+  // Legacy support
   CultureName,
   CultureDescription,
   Region,
   Significance,
   ImageURL,
   VideoURL,
-  Likes = 0,
-  likedByCurrentUser = false,
-  onDelete,
+  Likes,
 }: Props) {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
+  
+  // Use new fields, fallback to legacy fields
+  const displayCaption = caption || CultureName || '';
+  const displayLocation = location || Region || '';
+  const displayImage = imageUrl || ImageURL;
+  const displayVideo = videoUrl || VideoURL;
+  const displayLikes = likes || Likes || 0;
+  
   const [liked, setLiked] = useState(likedByCurrentUser);
-  const [likes, setLikes] = useState(Likes);
+  const [likeCount, setLikeCount] = useState(displayLikes);
   const [saved, setSaved] = useState(false);
   const [comments, setComments] = useState<CultureComment[]>([]);
   const [showOptions, setShowOptions] = useState(false);
@@ -98,7 +114,7 @@ export default function CulturalEntity({
 
     try {
       const response = await axios.put(
-        API_ROUTES.likeItem(id),
+        API_ROUTES.likePost(id),
         {},
         { withCredentials: true }
       );
@@ -107,7 +123,7 @@ export default function CulturalEntity({
         setLiked(true);
         alert('You already liked this post.');
       } else {
-        setLikes((prev) => (prev ?? 0) + 1);
+        setLikeCount((prev: number) => (prev ?? 0) + 1);
         setLiked(true);
       }
     } catch (error: any) {
@@ -158,160 +174,100 @@ export default function CulturalEntity({
   };
 
   return (
-    <div className="mb-4 overflow-hidden rounded-lg border border-gray-700 bg-black/30 backdrop-blur-md shadow-lg transition-all hover:shadow-xl">
-      <div className={`h-2 ${accentColor}`} />
-
-      <div className="flex items-center justify-between px-4 pt-4">
-        <div className="flex items-center">
-          <div
-            className={`flex h-10 w-10 items-center justify-center rounded-full text-white ${accentColor}`}
-          >
-            {CultureName.charAt(0).toUpperCase()}
+    <div className="bg-white border border-gray-300 rounded-sm mb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className={`flex h-9 w-9 items-center justify-center rounded-full text-white font-bold text-sm ${accentColor}`}>
+            {(displayLocation || displayCaption || 'U').charAt(0).toUpperCase()}
           </div>
-          <div className="ml-3">
-            <h3 className="font-semibold text-white">{Region}</h3>
-            <p className="text-xs text-gray-400">
-              Posted {Math.floor(Math.random() * 7) + 1}d ago
-            </p>
+          <div>
+            <span className="font-semibold text-sm text-gray-900 block">{displayLocation || 'User'}</span>
+            {tags && <span className="text-xs text-gray-500">{tags}</span>}
           </div>
         </div>
-        <div className="relative">
-          <button
-            type="button"
-            className="text-gray-400 hover:text-white"
-            onClick={() => setShowOptions((prev) => !prev)}
-          >
-            <FaEllipsisH />
-          </button>
-          {showOptions && (
-            <div className="absolute right-0 mt-1 w-36 rounded-md border border-gray-700 bg-gray-900 py-2 shadow-lg">
-              <button
-                type="button"
-                onClick={() => router.push(`/form/${id}`)}
-                className="block w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={() => onDelete(id)}
-                className="block w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-gray-800"
-              >
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="px-4 py-3">
-        {ImageURL && (
-          <div className="relative mb-2 h-48 w-full overflow-hidden rounded-lg">
-            <Image
-              src={assetUrl(ImageURL) ?? '/images/photo-1585607344893-43a4bd91169a.png'}
-              alt={CultureName}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            />
+        <button type="button" onClick={() => setShowOptions(!showOptions)} className="text-gray-900">
+          <FaEllipsisH />
+        </button>
+        {showOptions && (
+          <div className="absolute right-4 mt-32 w-32 bg-white border border-gray-300 rounded-md shadow-lg z-10">
+            <button onClick={() => router.push(`/form/${id}`)} className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100">Edit</button>
+            <button onClick={() => onDelete(id)} className="block w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-gray-100">Delete</button>
           </div>
         )}
-        {VideoURL && (
-          <video
-            src={assetUrl(VideoURL) ?? undefined}
-            controls
-            className="mb-2 h-48 w-full rounded-lg object-cover"
-          />
+      </div>
+
+      {/* Media */}
+      {displayImage && (
+        <div className="relative w-full" style={{ aspectRatio: '1/1' }}>
+          <Image src={assetUrl(displayImage) || '/images/photo-1585607344893-43a4bd91169a.png'} alt={displayCaption} fill className="object-cover" sizes="100vw" />
+        </div>
+      )}
+      {displayVideo && <video src={assetUrl(displayVideo) || undefined} controls className="w-full" style={{ maxHeight: '600px' }} />}
+
+      {/* Actions */}
+      <div className="px-4 py-2 flex items-center gap-4">
+        <button onClick={handleLike} className="hover:opacity-60">
+          {liked ? <FaHeart className="text-red-500 text-2xl" /> : <FaRegHeart className="text-2xl" />}
+        </button>
+        <button onClick={() => setShowComments(!showComments)} className="hover:opacity-60">
+          <FaComment className="text-2xl" />
+        </button>
+        <button className="hover:opacity-60">
+          <FaShare className="text-2xl" />
+        </button>
+        <button onClick={() => setSaved(!saved)} className="ml-auto hover:opacity-60">
+          <FaBookmark className={`text-2xl ${saved ? 'fill-current' : ''}`} />
+        </button>
+      </div>
+
+      {/* Likes */}
+      <div className="px-4 pb-2">
+        <span className="font-semibold text-sm">{likeCount} likes</span>
+      </div>
+
+      {/* Caption */}
+      <div className="px-4 pb-2">
+        <p className="text-sm">
+          <span className="font-semibold mr-2">{displayLocation || 'User'}</span>
+          {displayCaption}
+        </p>
+        {(CultureDescription || Significance) && (
+          <p className="text-sm text-gray-600 mt-1">
+            {CultureDescription || Significance}
+          </p>
         )}
-        <h2 className="mb-2 text-xl font-bold text-orange-400">
-          {CultureName}
-        </h2>
-        <p className="mb-3 text-sm text-gray-300">{CultureDescription}</p>
-        <div className="text-sm text-gray-300">
-          <span className="font-semibold text-orange-400">Significance:</span>{' '}
-          {Significance}
-        </div>
       </div>
 
-      <div className="border-t border-gray-700 bg-gray-900/50 px-4 py-2">
-        <div className="flex items-center gap-4 text-sm text-gray-400">
-          <span>{likes} likes</span>
-          <span>{comments.length} comments</span>
-        </div>
-      </div>
-
-      <div className="flex justify-between border-t border-gray-700 px-4 py-2">
-        <button
-          type="button"
-          className={`flex items-center gap-1 rounded-full px-3 py-1 ${
-            liked
-              ? 'text-orange-400'
-              : 'text-gray-400 hover:text-orange-400'
-          }`}
-          onClick={handleLike}
-        >
-          <FaThumbsUp /> <span>Like</span>
+      {/* Comments */}
+      {comments.length > 0 && !showComments && (
+        <button onClick={() => setShowComments(true)} className="px-4 pb-2 text-sm text-gray-500">
+          View all {comments.length} comments
         </button>
-        <button
-          type="button"
-          className="flex items-center gap-1 rounded-full px-3 py-1 text-gray-400 hover:text-orange-400"
-          onClick={() => setShowComments((prev) => !prev)}
-        >
-          <FaComment /> <span>Comment</span>
-        </button>
-        <button
-          type="button"
-          className="flex items-center gap-1 rounded-full px-3 py-1 text-gray-400 hover:text-orange-400"
-        >
-          <FaShare /> <span>Share</span>
-        </button>
-        <button
-          type="button"
-          className={`flex items-center gap-1 rounded-full px-3 py-1 ${
-            saved
-              ? 'text-orange-400'
-              : 'text-gray-400 hover:text-orange-400'
-          }`}
-          onClick={() => setSaved((prev) => !prev)}
-        >
-          <FaBookmark />
-        </button>
-      </div>
+      )}
 
       {showComments && (
-        <div className="border-t border-gray-700 bg-black/40 px-4 py-3">
-          <div className="mb-2 flex items-center gap-2">
+        <div className="px-4 pb-3 border-t border-gray-200 pt-3">
+          <div className="space-y-2 mb-3 max-h-60 overflow-y-auto">
+            {comments.map((comment) => (
+              <div key={comment.id} className="text-sm">
+                <span className="font-semibold mr-2">{comment.username || 'User'}</span>
+                {comment.comment}
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 border-t border-gray-200 pt-3">
             <input
               type="text"
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
               placeholder="Add a comment..."
-              className="flex-1 rounded border border-gray-600 bg-gray-800 px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="flex-1 text-sm outline-none"
             />
-            <button
-              type="button"
-              className="rounded bg-orange-500 px-4 py-2 font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
-              onClick={handleAddComment}
-              disabled={!commentText.trim()}
-            >
+            <button onClick={handleAddComment} disabled={!commentText.trim()} className="text-blue-500 font-semibold text-sm disabled:opacity-50">
               Post
             </button>
-          </div>
-          <div className="max-h-64 overflow-auto space-y-2">
-            {comments.length === 0 && (
-              <div className="text-center py-4 text-sm text-gray-400">
-                No comments yet. Be the first to comment!
-              </div>
-            )}
-            {comments.map((comment) => (
-              <div key={comment.id} className="rounded bg-gray-800/50 p-2">
-                <span className="font-semibold text-orange-400">
-                  {comment.username ?? 'Anonymous'}
-                </span>
-                <p className="text-sm text-gray-200 mt-1">{comment.comment}</p>
-              </div>
-            ))}
           </div>
         </div>
       )}

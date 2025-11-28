@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import CultureForm from '@/components/forms/CultureForm';
+import CreatePost from '@/components/forms/CreatePost';
 
 export default function CreateFormPage() {
   const { isAuthenticated, loading } = useAuth();
@@ -28,8 +28,8 @@ export default function CreateFormPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-[#FF9933] via-white to-[#138808] py-10">
-      <CultureForm />
+    <div className="min-h-screen bg-gray-50 py-10">
+      <CreatePost />
     </div>
   );
 }

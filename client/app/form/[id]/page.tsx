@@ -1,4 +1,4 @@
-import CultureForm from '@/components/forms/CultureForm';
+import CreatePost from '@/components/forms/CreatePost';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -7,8 +7,8 @@ interface PageProps {
 export default async function EditFormPage({ params }: PageProps) {
   const { id } = await params;
   return (
-    <div className="min-h-screen bg-gradient-to-r from-[#FF9933] via-white to-[#138808] py-10">
-      <CultureForm itemId={id} />
+    <div className="min-h-screen bg-gray-50 py-10">
+      <CreatePost postId={id} />
     </div>
   );
 }

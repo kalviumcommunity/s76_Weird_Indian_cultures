@@ -3,26 +3,23 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  FaArchway,
-  FaBell,
-  FaBook,
-  FaGlobe,
   FaHome,
-  FaPlus,
   FaSearch,
+  FaCompass,
+  FaPlay,
+  FaComment,
+  FaHeart,
+  FaPlusSquare,
   FaUser,
-  FaSignInAlt,
-  FaUserPlus,
+  FaBars,
   FaSignOutAlt,
 } from 'react-icons/fa';
 import { useAuth } from '@/contexts/AuthContext';
 import axios from 'axios';
 import { API_ROUTES } from '@/lib/constants';
 
-export default function Navbar() {
+export default function Sidebar() {
   const router = useRouter();
-  const [searchFocused, setSearchFocused] = useState(false);
-  const [showArchaeMenu, setShowArchaeMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
 
@@ -43,200 +40,143 @@ export default function Navbar() {
     setShowUserMenu(false);
   };
 
+  const menuItems = [
+    { icon: FaHome, label: 'Home', path: '/home' },
+    { icon: FaSearch, label: 'Search', path: '/home' },
+    { icon: FaCompass, label: 'Explore', path: '/home' },
+    { icon: FaPlay, label: 'Reels', path: '/home' },
+    { icon: FaComment, label: 'Messages', path: '/home' },
+    { icon: FaHeart, label: 'Notifications', path: '/home' },
+    { icon: FaPlusSquare, label: 'Create', path: '/form' },
+  ];
+
   return (
     <>
-      <div className="fixed top-0 z-50 w-full border-b border-gray-700 bg-black/30 backdrop-blur-md">
-        <div className="mx-auto flex h-[70px] max-w-6xl items-center justify-between px-4">
-          <div className="flex items-center">
-            <FaGlobe className="text-2xl text-orange-500" />
-            <span className="ml-2 text-lg font-bold text-white">
-              WeirdCultures
-            </span>
-          </div>
+      {/* Desktop Sidebar */}
+      <div className="hidden md:flex fixed left-0 top-0 h-screen w-64 border-r border-gray-200 bg-white flex-col z-50">
+        {/* Logo */}
+        <div className="px-6 py-8 cursor-pointer" onClick={() => navigate('/home')}>
+          <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text text-transparent">
+            Instagram
+          </span>
+        </div>
 
-          <div
-            className={`relative mx-4 w-full max-w-xs ${
-              searchFocused ? 'flex-grow' : ''
-            }`}
-          >
-            <input
-              type="text"
-              placeholder="Search cultures..."
-              className="w-full rounded-full border border-gray-700 bg-black/50 py-2 pl-10 pr-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-            />
-            <FaSearch className="absolute left-3 top-3 text-gray-400" />
-          </div>
-
-          <div className="hidden items-center space-x-8 md:flex">
+        {/* Menu Items */}
+        <nav className="flex-1 px-3">
+          {menuItems.map((item) => (
             <button
+              key={item.label}
               type="button"
-              onClick={() => navigate('/home')}
-              className="text-gray-300 hover:text-orange-400"
+              onClick={() => navigate(item.path)}
+              className="flex items-center gap-4 w-full px-3 py-3 rounded-lg text-gray-800 hover:bg-gray-100 transition-colors mb-1"
             >
-              <FaHome className="text-xl" />
+              <item.icon className="text-2xl" />
+              <span className="text-base font-medium">{item.label}</span>
             </button>
+          ))}
 
-            <div className="group relative">
+          {/* Profile */}
+          {isAuthenticated ? (
+            <div className="relative">
               <button
                 type="button"
-                className="flex items-center gap-2 text-gray-300 hover:text-orange-400"
-                onClick={() => setShowArchaeMenu((prev) => !prev)}
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-4 w-full px-3 py-3 rounded-lg text-gray-800 hover:bg-gray-100 transition-colors"
               >
-                <FaArchway className="text-xl" />
-                <span className="hidden text-sm lg:block">Archaeological</span>
+                <div className="h-7 w-7 rounded-full bg-gradient-to-br from-orange-400 to-pink-400 flex items-center justify-center text-white font-bold text-sm">
+                  {user?.username?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <span className="text-base font-medium">Profile</span>
               </button>
 
-              {showArchaeMenu && (
-                <div className="absolute right-0 mt-2 w-64 rounded-md border border-gray-700 bg-black/80 backdrop-blur-md shadow-lg">
-                  <div className="border-t border-gray-700 pt-1">
-                    <a
-                      href="/archaeology/all"
-                      className="flex items-center gap-2 px-4 py-2 text-orange-400 hover:bg-gray-800"
-                    >
-                      <FaBook /> View All Archaeological Findings
-                    </a>
-                  </div>
+              {showUserMenu && (
+                <div className="absolute left-3 bottom-16 w-56 rounded-lg border border-gray-200 bg-white shadow-xl">
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-gray-100 rounded-lg"
+                  >
+                    <FaSignOutAlt />
+                    <span>Logout</span>
+                  </button>
                 </div>
               )}
             </div>
-
+          ) : (
             <button
               type="button"
-              className="relative text-gray-300 hover:text-orange-400"
+              onClick={() => navigate('/login')}
+              className="flex items-center gap-4 w-full px-3 py-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors mt-2"
             >
-              <FaBell className="text-xl" />
-              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-xs text-white">
-                2
-              </span>
+              <FaUser className="text-xl" />
+              <span className="text-base font-semibold">Login</span>
             </button>
+          )}
+        </nav>
 
-            {isAuthenticated ? (
-              <>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center gap-2 text-gray-300 hover:text-orange-400"
-                  >
-                    <FaUser className="text-xl" />
-                    <span className="hidden text-sm lg:block">{user?.username}</span>
-                  </button>
-
-                  {showUserMenu && (
-                    <div className="absolute right-0 mt-2 w-48 rounded-md border border-gray-700 bg-black/90 backdrop-blur-md shadow-lg">
-                      <button
-                        type="button"
-                        onClick={handleLogout}
-                        className="flex w-full items-center gap-2 px-4 py-2 text-left text-gray-300 hover:bg-gray-800 hover:text-orange-400"
-                      >
-                        <FaSignOutAlt /> Logout
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => navigate('/form')}
-                  className="flex h-10 w-24 items-center justify-center space-x-1 rounded-2xl bg-orange-400 text-white transition-colors hover:bg-orange-500"
-                >
-                  <FaPlus size={12} />
-                  <span>Add New</span>
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => navigate('/login')}
-                  className="flex items-center gap-2 text-gray-300 hover:text-orange-400"
-                >
-                  <FaSignInAlt className="text-xl" />
-                  <span className="hidden text-sm lg:block">Login</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => navigate('/signup')}
-                  className="flex h-10 px-4 items-center justify-center space-x-1 rounded-2xl bg-orange-400 text-white transition-colors hover:bg-orange-500"
-                >
-                  <FaUserPlus size={14} />
-                  <span>Sign Up</span>
-                </button>
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center md:hidden">
-            {isAuthenticated ? (
-              <button
-                type="button"
-                onClick={() => navigate('/form')}
-                className="flex h-10 w-24 items-center justify-center space-x-1 rounded-2xl bg-orange-400 text-white transition-colors hover:bg-orange-500"
-              >
-                <FaPlus size={12} />
-                <span>Add New</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => navigate('/login')}
-                className="flex h-10 px-4 items-center justify-center space-x-1 rounded-2xl bg-orange-400 text-white transition-colors hover:bg-orange-500"
-              >
-                <FaSignInAlt size={14} />
-                <span>Login</span>
-              </button>
-            )}
-          </div>
+        {/* More Menu */}
+        <div className="px-3 pb-6">
+          <button
+            type="button"
+            className="flex items-center gap-4 w-full px-3 py-3 rounded-lg text-gray-800 hover:bg-gray-100 transition-colors"
+          >
+            <FaBars className="text-2xl" />
+            <span className="text-base font-medium">More</span>
+          </button>
         </div>
       </div>
 
-      <div className="fixed bottom-0 z-50 w-full border-t border-gray-700 bg-black/30 backdrop-blur-md md:hidden">
-        <div className="flex justify-around py-3">
+      {/* Mobile Bottom Nav */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white md:hidden">
+        <div className="flex justify-around py-2">
           <button
             type="button"
             onClick={() => navigate('/home')}
-            className="flex flex-col items-center text-gray-300 hover:text-orange-400"
+            className="flex flex-col items-center justify-center p-2 text-gray-800 hover:text-gray-900"
           >
-            <FaHome className="text-xl" />
-            <span className="mt-1 text-xs">Home</span>
+            <FaHome className="text-2xl" />
           </button>
 
           <button
             type="button"
-            className="flex flex-col items-center text-gray-300 hover:text-orange-400"
+            className="flex flex-col items-center justify-center p-2 text-gray-800 hover:text-gray-900"
           >
-            <FaSearch className="text-xl" />
-            <span className="mt-1 text-xs">Search</span>
+            <FaSearch className="text-2xl" />
           </button>
 
           <button
             type="button"
             onClick={() => navigate('/form')}
-            className="flex flex-col items-center text-gray-300 hover:text-orange-400"
+            className="flex flex-col items-center justify-center p-2 text-gray-800 hover:text-gray-900"
           >
-            <FaPlus className="text-xl" />
-            <span className="mt-1 text-xs">Post</span>
+            <FaPlusSquare className="text-2xl" />
           </button>
 
           <button
             type="button"
-            onClick={() => setShowArchaeMenu((prev) => !prev)}
-            className="flex flex-col items-center text-gray-300 hover:text-orange-400"
+            className="flex flex-col items-center justify-center p-2 text-gray-800 hover:text-gray-900"
           >
-            <FaArchway className="text-xl" />
-            <span className="mt-1 text-xs">Archaeology</span>
+            <FaPlay className="text-2xl" />
           </button>
 
-          <button
-            type="button"
-            className="flex flex-col items-center text-gray-300 hover:text-orange-400"
-          >
-            <FaUser className="text-xl" />
-            <span className="mt-1 text-xs">Profile</span>
-          </button>
+          {isAuthenticated ? (
+            <button
+              type="button"
+              className="flex flex-col items-center justify-center p-2"
+            >
+              <div className="h-7 w-7 rounded-full bg-gradient-to-br from-orange-400 to-pink-400 flex items-center justify-center text-white font-bold text-sm">
+                {user?.username?.charAt(0).toUpperCase() || 'U'}
+              </div>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigate('/login')}
+              className="flex flex-col items-center justify-center p-2 text-gray-800 hover:text-gray-900"
+            >
+              <FaUser className="text-2xl" />
+            </button>
+          )}
         </div>
       </div>
     </>
