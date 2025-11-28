@@ -7,9 +7,18 @@ import { handleFileUploads } from '@/lib/utils/file-upload';
 import { authenticate } from '@/lib/auth/middleware';
 
 // Format post for response
-function formatPost(post: any, userId?: string) {
+function formatPost(post: any, userId?: string, currentUser?: any) {
   const likedByUser = userId && post.likedBy 
     ? post.likedBy.some((id: any) => id.toString() === userId)
+    : false;
+  
+  const savedByUser = userId && post.savedBy 
+    ? post.savedBy.some((id: any) => id.toString() === userId)
+    : false;
+
+  const creatorId = post.created_by?._id?.toString() || post.created_by?.toString() || null;
+  const isFollowing = currentUser && creatorId
+    ? currentUser.following.some((id: any) => id.toString() === creatorId)
     : false;
 
   return {
@@ -21,8 +30,12 @@ function formatPost(post: any, userId?: string) {
     videoUrl: post.videoUrl,
     likes: post.likes ?? 0,
     saves: post.saves ?? 0,
-    created_by: post.created_by?.toString() ?? null,
+    created_by: creatorId,
+    creatorUsername: post.created_by?.username || 'User',
     likedByCurrentUser: likedByUser,
+    savedByCurrentUser: savedByUser,
+    isFollowingCreator: isFollowing,
+    isOwnPost: userId && creatorId ? userId === creatorId : false,
   };
 }
 
@@ -33,15 +46,39 @@ export async function GET(req: NextRequest) {
 
     // Get current user if authenticated
     let currentUserId: string | undefined;
+    let currentUser: any = null;
     try {
       const user = authenticate(req);
       currentUserId = user?.id;
+      if (currentUserId) {
+        currentUser = await User.findById(currentUserId);
+      }
     } catch {
       // User not authenticated, continue without user context
     }
 
-    const posts = await Post.find().sort({ createdAt: -1 });
-    return NextResponse.json(posts.map(post => formatPost(post, currentUserId)));
+    // Check query parameters
+    const url = new URL(req.url);
+    const savedOnly = url.searchParams.get('saved') === 'true';
+    const followingOnly = url.searchParams.get('following') === 'true';
+
+    let posts;
+    if (savedOnly && currentUserId) {
+      // Fetch only posts saved by current user
+      posts = await Post.find({ 
+        savedBy: currentUserId 
+      }).populate('created_by', 'username').sort({ createdAt: -1 });
+    } else if (followingOnly && currentUser && currentUser.following.length > 0) {
+      // Fetch posts from followed users only
+      posts = await Post.find({
+        created_by: { $in: currentUser.following }
+      }).populate('created_by', 'username').sort({ createdAt: -1 });
+    } else {
+      // Fetch all posts (explore)
+      posts = await Post.find().populate('created_by', 'username').sort({ createdAt: -1 });
+    }
+
+    return NextResponse.json(posts.map(post => formatPost(post, currentUserId, currentUser)));
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }

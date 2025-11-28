@@ -6,6 +6,10 @@ export interface IUser extends Document {
   username: string;
   email: string;
   password: string;
+  bio: string;
+  profilePic: string | null;
+  following: mongoose.Types.ObjectId[];
+  followers: mongoose.Types.ObjectId[];
   matchPassword: (password: string) => Promise<boolean>;
   createdAt: Date;
   updatedAt: Date;
@@ -22,6 +26,20 @@ const userSchema = new Schema<IUser>(
       trim: true,
     },
     password: { type: String, required: true },
+    bio: { type: String, default: '', trim: true },
+    profilePic: { type: String, default: null },
+    following: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
+    followers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
   },
   {
     timestamps: true,

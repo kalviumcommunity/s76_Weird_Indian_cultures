@@ -27,31 +27,31 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     const userObjectId = new mongoose.Types.ObjectId(user.id);
-    const likedIndex = post.likedBy.findIndex((likedId) => likedId.toString() === user.id);
+    const savedIndex = post.savedBy.findIndex((savedId) => savedId.toString() === user.id);
     
-    if (likedIndex > -1) {
-      // Unlike: remove user from likedBy array
-      post.likedBy.splice(likedIndex, 1);
-      post.likes = post.likedBy.length;
+    if (savedIndex > -1) {
+      // Unsave: remove user from savedBy array
+      post.savedBy.splice(savedIndex, 1);
+      post.saves = post.savedBy.length;
       await post.save();
       return NextResponse.json({ 
-        message: 'Unliked', 
-        liked: false, 
-        likes: post.likes 
+        message: 'Unsaved', 
+        saved: false, 
+        saves: post.saves 
       });
     } else {
-      // Like: add user to likedBy array
-      post.likedBy.push(userObjectId);
-      post.likes = post.likedBy.length;
+      // Save: add user to savedBy array
+      post.savedBy.push(userObjectId);
+      post.saves = post.savedBy.length;
       await post.save();
       return NextResponse.json({ 
-        message: 'Liked', 
-        liked: true, 
-        likes: post.likes 
+        message: 'Saved', 
+        saved: true, 
+        saves: post.saves 
       });
     }
   } catch (error: any) {
-    console.error('Like/Unlike error:', error);
+    console.error('Save/Unsave error:', error);
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }

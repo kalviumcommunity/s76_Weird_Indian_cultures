@@ -4,12 +4,14 @@ import Post from '@/lib/db/models/Post';
 import User from '@/lib/db/models/User';
 import Comment from '@/lib/db/models/Comment';
 import { sanitizeId, validateObjectId } from '@/lib/utils/validation';
+import mongoose from 'mongoose';
 
 function formatComment(comment: any) {
   return {
     id: comment._id.toString(),
     comment: comment.comment,
     username: comment.user?.username ?? 'Anonymous',
+    createdAt: comment.createdAt,
   };
 }
 
@@ -27,8 +29,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .populate('user', 'username')
       .sort({ createdAt: -1 });
 
-    return NextResponse.json(comments.map(formatComment));
+    const commentCount = await Comment.countDocuments({ item: postId });
+
+    return NextResponse.json({
+      comments: comments.map(formatComment),
+      count: commentCount
+    });
   } catch (error: any) {
+    console.error('Get comments error:', error);
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }
@@ -60,18 +68,25 @@ export async function POST(req: NextRequest) {
     }
 
     const newComment = await Comment.create({
-      item: postId,
-      user: userId,
+      item: new mongoose.Types.ObjectId(postId),
+      user: new mongoose.Types.ObjectId(userId),
       comment: comment.trim(),
     });
 
     await newComment.populate('user', 'username');
 
+    const commentCount = await Comment.countDocuments({ item: postId });
+
     return NextResponse.json(
-      { message: 'Comment added successfully!', comment: formatComment(newComment) },
+      { 
+        message: 'Comment added successfully!', 
+        comment: formatComment(newComment),
+        count: commentCount
+      },
       { status: 201 }
     );
   } catch (error: any) {
+    console.error('Add comment error:', error);
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }

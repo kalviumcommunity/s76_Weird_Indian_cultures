@@ -14,6 +14,7 @@ import {
   FaBars,
   FaSignOutAlt,
 } from 'react-icons/fa';
+import { BsBookmark } from 'react-icons/bs';
 import { useAuth } from '@/contexts/AuthContext';
 import axios from 'axios';
 import { API_ROUTES } from '@/lib/constants';
@@ -43,11 +44,12 @@ export default function Sidebar() {
   const menuItems = [
     { icon: FaHome, label: 'Home', path: '/home' },
     { icon: FaSearch, label: 'Search', path: '/home' },
-    { icon: FaCompass, label: 'Explore', path: '/home' },
+    { icon: FaCompass, label: 'Explore', path: '/explore' },
     { icon: FaPlay, label: 'Reels', path: '/home' },
     { icon: FaComment, label: 'Messages', path: '/home' },
     { icon: FaHeart, label: 'Notifications', path: '/home' },
     { icon: FaPlusSquare, label: 'Create', path: '/form' },
+    { icon: BsBookmark, label: 'Saved', path: '/saved' },
   ];
 
   return (
@@ -80,13 +82,38 @@ export default function Sidebar() {
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setShowUserMenu(!showUserMenu)}
+                onClick={() => navigate(`/profile/${user?.id}`)}
                 className="flex items-center gap-4 w-full px-3 py-3 rounded-lg text-gray-800 hover:bg-gray-100 transition-colors"
               >
                 <div className="h-7 w-7 rounded-full bg-gradient-to-br from-orange-400 to-pink-400 flex items-center justify-center text-white font-bold text-sm">
                   {user?.username?.charAt(0).toUpperCase() || 'U'}
                 </div>
                 <span className="text-base font-medium">Profile</span>
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigate('/login')}
+              className="flex items-center gap-4 w-full px-3 py-3 rounded-lg text-gray-800 hover:bg-gray-100 transition-colors"
+            >
+              <FaUser className="text-2xl" />
+              <span className="text-base font-medium">Login</span>
+            </button>
+          )}
+        </nav>
+
+        {/* More Menu at bottom */}
+        {isAuthenticated && (
+          <div className="px-3 pb-4">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-4 w-full px-3 py-3 rounded-lg text-gray-800 hover:bg-gray-100 transition-colors"
+              >
+                <FaBars className="text-2xl" />
+                <span className="text-base font-medium">More</span>
               </button>
 
               {showUserMenu && (
@@ -102,28 +129,8 @@ export default function Sidebar() {
                 </div>
               )}
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => navigate('/login')}
-              className="flex items-center gap-4 w-full px-3 py-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors mt-2"
-            >
-              <FaUser className="text-xl" />
-              <span className="text-base font-semibold">Login</span>
-            </button>
-          )}
-        </nav>
-
-        {/* More Menu */}
-        <div className="px-3 pb-6">
-          <button
-            type="button"
-            className="flex items-center gap-4 w-full px-3 py-3 rounded-lg text-gray-800 hover:bg-gray-100 transition-colors"
-          >
-            <FaBars className="text-2xl" />
-            <span className="text-base font-medium">More</span>
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Mobile Bottom Nav */}
@@ -162,6 +169,7 @@ export default function Sidebar() {
           {isAuthenticated ? (
             <button
               type="button"
+              onClick={() => navigate(`/profile/${user?.id}`)}
               className="flex flex-col items-center justify-center p-2"
             >
               <div className="h-7 w-7 rounded-full bg-gradient-to-br from-orange-400 to-pink-400 flex items-center justify-center text-white font-bold text-sm">

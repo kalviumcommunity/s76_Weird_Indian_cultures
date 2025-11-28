@@ -16,26 +16,61 @@ import {
   CultureItem,
   UserSummary,
 } from '@/lib/constants';
+import { useAuth } from '@/contexts/AuthContext';
 
 type ContentFilter = 'all' | 'videos' | 'images';
 
 export default function HomePage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [cultures, setCultures] = useState<CultureItem[]>([]);
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [selectedUser, setSelectedUser] = useState('');
   const [loading, setLoading] = useState(true);
   const [contentType, setContentType] = useState<ContentFilter>('all');
+  const [followingStates, setFollowingStates] = useState<Record<string, boolean>>({});
+  const [followingCount, setFollowingCount] = useState(0);
+  const [hasFollowing, setHasFollowing] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetchUsers();
-    fetchCultures();
-  }, []);
+    checkFollowingStatus();
+  }, [user]);
+
+  useEffect(() => {
+    if (hasFollowing !== null) {
+      fetchCultures();
+    }
+  }, [hasFollowing]);
+
+  const checkFollowingStatus = async () => {
+    if (!user) {
+      setHasFollowing(false);
+      return;
+    }
+    
+    try {
+      const res = await axios.get(`/api/users/${user.id}`, { withCredentials: true });
+      const followingLength = res.data.following?.length || 0;
+      setFollowingCount(followingLength);
+      setHasFollowing(followingLength > 0);
+    } catch {
+      setHasFollowing(false);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get<UserSummary[]>(API_ROUTES.users);
-      setUsers(Array.isArray(res.data) ? res.data : []);
+      const res = await axios.get<UserSummary[]>(API_ROUTES.users, { withCredentials: true });
+      const usersData = Array.isArray(res.data) ? res.data : [];
+      setUsers(usersData);
+      
+      // Initialize following states
+      const states: Record<string, boolean> = {};
+      usersData.forEach(user => {
+        states[user.id] = user.isFollowing || false;
+      });
+      setFollowingStates(states);
     } catch {
       setUsers([]);
     }
@@ -44,11 +79,17 @@ export default function HomePage() {
   const fetchCultures = async (userId?: string) => {
     setLoading(true);
     try {
-      const url =
-        userId && userId.length > 0
-          ? API_ROUTES.postsByUser(userId)
-          : API_ROUTES.fetchPosts;
-      const res = await axios.get<CultureItem[]>(url);
+      let url;
+      if (userId && userId.length > 0) {
+        url = API_ROUTES.postsByUser(userId);
+      } else if (hasFollowing) {
+        // Fetch posts from followed users only
+        url = `${API_ROUTES.fetchPosts}?following=true`;
+      } else {
+        // Show all posts when not following anyone
+        url = API_ROUTES.fetchPosts;
+      }
+      const res = await axios.get<CultureItem[]>(url, { withCredentials: true });
       setCultures(Array.isArray(res.data) ? res.data : []);
     } catch {
       setCultures([]);
@@ -72,6 +113,29 @@ export default function HomePage() {
       alert('Entry deleted successfully!');
     } catch {
       // no-op
+    }
+  };
+
+  const handleFollowToggle = async (userId: string) => {
+    try {
+      const response = await axios.put(
+        API_ROUTES.followUser(userId),
+        {},
+        { withCredentials: true }
+      );
+      
+      setFollowingStates(prev => ({
+        ...prev,
+        [userId]: response.data.isFollowing
+      }));
+      
+      // Update following count and status
+      await checkFollowingStatus();
+      // Refresh posts after follow/unfollow
+      fetchCultures();
+    } catch (error) {
+      console.error('Follow error:', error);
+      alert('Failed to update follow status');
     }
   };
 
@@ -121,6 +185,36 @@ export default function HomePage() {
             <div className="flex justify-center py-10">
               <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-orange-500" />
             </div>
+          ) : !hasFollowing && filteredCultures.length === 0 ? (
+            <div className="text-center py-10">
+              <div className="mb-6">
+                <svg
+                  className="mx-auto h-24 w-24 text-gray-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                Welcome to Instagram!
+              </h2>
+              <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                Follow people to see their photos and videos in your feed.
+              </p>
+              <button
+                onClick={() => router.push('/explore')}
+                className="px-6 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600"
+              >
+                Explore
+              </button>
+            </div>
           ) : filteredCultures.length > 0 ? (
             <div className="space-y-6">
               {filteredCultures.map((culture) => (
@@ -156,11 +250,14 @@ export default function HomePage() {
                         <p className="text-sm font-semibold text-gray-800">
                           {user.username}
                         </p>
-                        <p className="text-xs text-gray-500">Bio here ...</p>
+                        <p className="text-xs text-gray-500">Suggested for you</p>
                       </div>
                     </div>
-                    <button className="text-xs font-semibold text-blue-500 hover:text-blue-700">
-                      Follow
+                    <button 
+                      onClick={() => handleFollowToggle(user.id)}
+                      className="text-xs font-semibold text-blue-500 hover:text-blue-700"
+                    >
+                      {followingStates[user.id] ? 'Unfollow' : 'Follow'}
                     </button>
                   </div>
                 ))}
