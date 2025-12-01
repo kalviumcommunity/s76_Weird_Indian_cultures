@@ -15,17 +15,19 @@ export async function GET(req: NextRequest) {
     const allUsers = await UserModel.findAll();
 
     const usersWithFollowStatus = await Promise.all(
-      allUsers.map(async (user) => {
-        const isFollowing = currentUserId
-          ? await UserModel.isFollowing(currentUserId, user.id)
-          : false;
-        
-        return {
-          id: user.id.toString(),
-          username: user.username,
-          isFollowing,
-        };
-      })
+      allUsers
+        .filter(user => user.id.toString() !== currentUserId) // Exclude current user
+        .map(async (user) => {
+          const isFollowing = currentUserId
+            ? await UserModel.isFollowing(currentUserId, user.id)
+            : false;
+          
+          return {
+            id: user.id.toString(),
+            username: user.username,
+            isFollowing,
+          };
+        })
     );
 
     return NextResponse.json(usersWithFollowStatus);

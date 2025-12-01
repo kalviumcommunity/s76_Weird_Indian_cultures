@@ -11,7 +11,7 @@ export async function GET(
     const authUser = authenticate(req);
     const { id } = await params;
     
-    const post = await PostModel.findById(id, authUser?.id);
+    const post = await PostModel.findById(id);
     
     if (!post) {
       return NextResponse.json({ message: 'Post not found' }, { status: 404 });

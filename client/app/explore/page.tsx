@@ -189,9 +189,13 @@ export default function ExplorePage() {
                     </div>
                     <button 
                       onClick={() => handleFollowToggle(u.id)}
-                      className="text-xs font-semibold text-blue-500 hover:text-blue-700"
+                      className={`text-xs font-semibold transition-colors ${
+                        followingStates[u.id] 
+                          ? 'text-gray-400 hover:text-gray-600' 
+                          : 'text-blue-500 hover:text-blue-700'
+                      }`}
                     >
-                      {followingStates[u.id] ? 'Unfollow' : 'Follow'}
+                      {followingStates[u.id] ? 'Following' : 'Follow'}
                     </button>
                   </div>
                 ))}
