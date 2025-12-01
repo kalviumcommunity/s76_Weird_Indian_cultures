@@ -1,14 +1,11 @@
 import Joi from 'joi';
-import mongoose from 'mongoose';
 
-export const objectIdValidator = Joi.string()
-  .trim()
-  .custom((value, helpers) => {
-    if (!mongoose.Types.ObjectId.isValid(value)) {
-      return helpers.error('any.invalid');
-    }
-    return value;
-  }, 'ObjectId validation')
+// PostgreSQL ID validation (numeric IDs)
+export const objectIdValidator = Joi.alternatives()
+  .try(
+    Joi.number().integer().positive(),
+    Joi.string().trim().pattern(/^\d+$/).custom((value) => parseInt(value, 10))
+  )
   .messages({ 'any.invalid': 'Invalid ID format' });
 
 export const postValidationSchema = Joi.object({
@@ -23,10 +20,11 @@ export const updateValidationSchema = postValidationSchema.fork(
   (schema) => schema.optional()
 );
 
-export function validateObjectId(id: string): boolean {
-  return mongoose.Types.ObjectId.isValid(id);
+export function validateObjectId(id: string | number): boolean {
+  const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+  return !isNaN(numId) && numId > 0;
 }
 
 export function sanitizeId(value: any): string {
-  return typeof value === 'string' ? value.trim() : value;
+  return typeof value === 'string' ? value.trim() : value.toString();
 }

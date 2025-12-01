@@ -86,8 +86,10 @@ export default function HomePage() {
         // Fetch posts from followed users only
         url = `${API_ROUTES.fetchPosts}?following=true`;
       } else {
-        // Show all posts when not following anyone
-        url = API_ROUTES.fetchPosts;
+        // Don't fetch any posts if not following anyone
+        setCultures([]);
+        setLoading(false);
+        return;
       }
       const res = await axios.get<CultureItem[]>(url, { withCredentials: true });
       setCultures(Array.isArray(res.data) ? res.data : []);
@@ -255,9 +257,13 @@ export default function HomePage() {
                     </div>
                     <button 
                       onClick={() => handleFollowToggle(user.id)}
-                      className="text-xs font-semibold text-blue-500 hover:text-blue-700"
+                      className={`text-xs font-semibold transition-colors ${
+                        followingStates[user.id] 
+                          ? 'text-gray-400 hover:text-gray-600' 
+                          : 'text-blue-500 hover:text-blue-700'
+                      }`}
                     >
-                      {followingStates[user.id] ? 'Unfollow' : 'Follow'}
+                      {followingStates[user.id] ? 'Following' : 'Follow'}
                     </button>
                   </div>
                 ))}

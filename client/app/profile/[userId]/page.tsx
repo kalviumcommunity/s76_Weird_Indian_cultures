@@ -98,6 +98,29 @@ export default function ProfilePage() {
     }
   };
 
+  const handleSendMessage = async () => {
+    try {
+      // Check if conversation already exists
+      const convRes = await axios.get('/api/messages', { withCredentials: true });
+      const existingConversation = convRes.data.find(
+        (c: any) => c.other_user_id.toString() === userId
+      );
+      
+      if (existingConversation) {
+        // Navigate to existing conversation
+        router.push(`/messages/${existingConversation.id}`);
+      } else {
+        // Create new conversation by navigating to a special route
+        // We'll create the conversation when the first message is sent
+        router.push(`/messages/new?userId=${userId}&username=${profile?.username || 'User'}`);
+      }
+    } catch (error: any) {
+      console.error('Error checking conversations:', error);
+      // Just navigate to messages page
+      router.push('/messages');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
@@ -153,16 +176,24 @@ export default function ProfilePage() {
                     Edit Profile
                   </button>
                 ) : (
-                  <button
-                    onClick={handleFollowToggle}
-                    className={`px-6 py-1.5 rounded-lg text-sm font-semibold ${
-                      isFollowing
-                        ? 'bg-gray-200 hover:bg-gray-300 text-gray-900'
-                        : 'bg-blue-500 hover:bg-blue-600 text-white'
-                    }`}
-                  >
-                    {isFollowing ? 'Following' : 'Follow'}
-                  </button>
+                  <>
+                    <button
+                      onClick={handleFollowToggle}
+                      className={`px-6 py-1.5 rounded-lg text-sm font-semibold ${
+                        isFollowing
+                          ? 'bg-gray-200 hover:bg-gray-300 text-gray-900'
+                          : 'bg-blue-500 hover:bg-blue-600 text-white'
+                      }`}
+                    >
+                      {isFollowing ? 'Following' : 'Follow'}
+                    </button>
+                    <button
+                      onClick={handleSendMessage}
+                      className="px-6 py-1.5 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-semibold"
+                    >
+                      Message
+                    </button>
+                  </>
                 )}
                 {isOwnProfile && (
                   <button className="p-2 hover:bg-gray-100 rounded-full">

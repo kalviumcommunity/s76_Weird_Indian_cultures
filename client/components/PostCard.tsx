@@ -96,8 +96,8 @@ export default function PostCard({
     }
   };
 
-  const assetUrl = (path?: string | null) => {
-    if (!path) return null;
+  const assetUrl = (path?: string | null): string => {
+    if (!path) return '/images/photo-1585607344893-43a4bd91169a.png';
     if (path.startsWith('http')) return path;
     return `${API_BASE_URL}${path}`;
   };
@@ -127,10 +127,23 @@ export default function PostCard({
 
       {imageUrl && (
         <div className="relative w-full" style={{ aspectRatio: '1/1' }}>
-          <Image src={assetUrl(imageUrl) || '/images/photo-1585607344893-43a4bd91169a.png'} alt={caption} fill className="object-cover" sizes="100vw" />
+          <Image 
+            src={assetUrl(imageUrl)} 
+            alt={caption || 'Post image'} 
+            fill 
+            className="object-cover" 
+            sizes="100vw" 
+          />
         </div>
       )}
-      {videoUrl && <video src={assetUrl(videoUrl) || undefined} controls className="w-full" style={{ maxHeight: '600px' }} />}
+      {videoUrl && (
+        <video 
+          src={assetUrl(videoUrl)} 
+          controls 
+          className="w-full" 
+          style={{ maxHeight: '600px' }} 
+        />
+      )}
 
       <div className="px-4 py-2 flex items-center gap-4">
         <button onClick={handleLike} className="hover:opacity-60">

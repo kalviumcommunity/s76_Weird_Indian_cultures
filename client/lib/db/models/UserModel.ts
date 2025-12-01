@@ -112,6 +112,22 @@ export const UserModel = {
       [followerId, followingId]
     );
     return result.rows.length > 0;
+  },
+
+  async getFollowingWithDetails(userId: number | string): Promise<any[]> {
+    const result = await pool.query(
+      `SELECT u.id, u.username, u.profile_pic 
+       FROM follows f 
+       JOIN users u ON f.following_id = u.id 
+       WHERE f.follower_id = $1 
+       ORDER BY u.username ASC`,
+      [userId]
+    );
+    return result.rows.map(row => ({
+      id: row.id.toString(),
+      username: row.username,
+      profilePic: row.profile_pic || null,
+    }));
   }
 };
 

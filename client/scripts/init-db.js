@@ -94,17 +94,70 @@ async function initializeDatabase() {
     `);
     console.log('✅ Follows table created');
 
+    // Create Blocks table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS blocks (
+        id SERIAL PRIMARY KEY,
+        blocker_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        blocked_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(blocker_id, blocked_id)
+      );
+    `);
+    console.log('✅ Blocks table created');
+
+    // Create Conversations table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS conversations (
+        id SERIAL PRIMARY KEY,
+        user1_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        user2_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user1_id, user2_id),
+        CHECK (user1_id < user2_id)
+      );
+    `);
+    console.log('✅ Conversations table created');
+
+    // Create Messages table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
+        sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        receiver_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        is_read BOOLEAN DEFAULT FALSE,
+        is_request BOOLEAN DEFAULT FALSE,
+        request_accepted BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('✅ Messages table created');
+
     // Create indexes
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_posts_created_by ON posts(created_by);
+      CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments(post_id);
       CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id);
+      CREATE INDEX IF NOT EXISTS idx_comments_created_at ON comments(created_at);
       CREATE INDEX IF NOT EXISTS idx_post_likes_post_id ON post_likes(post_id);
       CREATE INDEX IF NOT EXISTS idx_post_likes_user_id ON post_likes(user_id);
       CREATE INDEX IF NOT EXISTS idx_post_saves_post_id ON post_saves(post_id);
       CREATE INDEX IF NOT EXISTS idx_post_saves_user_id ON post_saves(user_id);
       CREATE INDEX IF NOT EXISTS idx_follows_follower ON follows(follower_id);
       CREATE INDEX IF NOT EXISTS idx_follows_following ON follows(following_id);
+      CREATE INDEX IF NOT EXISTS idx_blocks_blocker ON blocks(blocker_id);
+      CREATE INDEX IF NOT EXISTS idx_blocks_blocked ON blocks(blocked_id);
+      CREATE INDEX IF NOT EXISTS idx_conversations_users ON conversations(user1_id, user2_id);
+      CREATE INDEX IF NOT EXISTS idx_conversations_last_message ON conversations(last_message_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
+      CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+      CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id);
+      CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
+      CREATE INDEX IF NOT EXISTS idx_messages_is_request ON messages(is_request, request_accepted);
     `);
     console.log('✅ Indexes created');
 

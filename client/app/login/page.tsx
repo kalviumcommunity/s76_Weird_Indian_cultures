@@ -43,17 +43,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-black p-4 md:p-8 font-sans">
+    <div className="min-h-screen w-full flex items-center justify-center bg-white p-4 md:p-8 font-sans">
       <div className="w-full max-w-[1200px] h-[800px] bg-white rounded-[40px] shadow-2xl overflow-hidden flex flex-col lg:flex-row">
         
         {/* LEFT SIDE - IMAGE & QUOTE */}
         <div className="relative hidden lg:flex w-1/2 bg-gray-900 text-white flex-col justify-end p-12">
-          {/* Placeholder for the abstract image */}
-          <div className="absolute inset-0 z-0 opacity-80">
-            {/* Replace src with your actual image path */}
+          {/* Background Image */}
+          <div className="absolute inset-0 z-0">
             <Image 
-              src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop" 
-              alt="Abstract Background" 
+              src="/images/insta2.jpg"
+              alt="Cultura Connect showcase"
               fill
               className="object-cover"
               priority
@@ -63,12 +62,12 @@ export default function LoginPage() {
           </div>
 
           <div className="relative z-10 mb-8">
-            <p className="text-xs font-semibold tracking-widest uppercase mb-4 text-gray-300">A Wise Quote</p>
+            <p className="text-xs font-semibold tracking-widest uppercase mb-4 text-gray-300">Cultura Connect</p>
             <h1 className="text-5xl font-serif mb-6 leading-tight">
-              Get <br /> Everything <br /> You Want
+              Discover <br /> Indian <br /> Cultures
             </h1>
             <p className="text-gray-300 text-sm leading-relaxed max-w-md">
-              You can get everything you want if you work hard, trust the process, and stick to the plan.
+              Connect with diverse Indian traditions, share unique cultural experiences, and celebrate our heritage together.
             </p>
           </div>
         </div>
@@ -77,11 +76,11 @@ export default function LoginPage() {
         <div className="w-full lg:w-1/2 bg-white p-8 md:p-16 flex flex-col justify-center relative">
           
           <div className="absolute top-8 right-8 md:top-12 md:right-12 flex items-center gap-2">
-             {/* Logo Placeholder */}
-             <div className="w-6 h-6 rounded-full bg-black/10 flex items-center justify-center">
-                <span className="text-xs font-bold">C</span>
+             {/* Logo */}
+             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#743bc0] to-[#5a2ea0] flex items-center justify-center shadow-lg">
+                <span className="text-lg font-bold text-white">Z</span>
              </div>
-             <span className="font-semibold text-gray-700">Cogie</span>
+             <span className="font-bold text-xl text-gray-800">Zoro</span>
           </div>
 
           <div className="max-w-md w-full mx-auto">
